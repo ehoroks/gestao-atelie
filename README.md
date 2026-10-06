@@ -1,6 +1,6 @@
 # Cirinha Ateliê
 
-Sistema web para gestão de um pequeno ateliê que produz e vende peças de roupa feitas à mão. O objetivo é substituir os controles manuais por uma ferramenta simples, organizada e fácil de usar, pensada para uma usuária idosa, com pouca experiência em tecnologia e dificuldade de enxergar.
+Sistema web para gestão de um pequeno ateliê que produz e vende peças de roupa feitas à mão. O objetivo é substituir os controles manuais por uma ferramenta simples, organizada e fácil de usar.
 
 ## Funcionalidades
 
@@ -22,11 +22,9 @@ Sistema web para gestão de um pequeno ateliê que produz e vende peças de roup
 | Backend | Java com Spring Boot (API REST) |
 | Banco de dados | PostgreSQL |
 
-A arquitetura é cliente-servidor, e o sistema é acessado por navegador, em computadores e dispositivos móveis.
-
 ## Documentação
 
-A especificação de requisitos completa (requisitos funcionais e não funcionais, histórias de usuário, diagrama de classes, explicação dos diagramas de atividade e arquitetura) está no documento **Projeto Ateliê - Documento de Especificação de Requisitos**.
+A especificação de requisitos completa (requisitos funcionais e não funcionais, histórias de usuário, diagrama de classes, explicação dos diagramas de atividade e arquitetura) está divido em entregas dentro da pasta Documentos.
 
 ### Diagramas de atividade
 
@@ -39,6 +37,7 @@ Documentos/Diagramas/Diagramas_Atividades_RF01-RF29
 ```
 
 Pasta com as imagens: **Diagramas-atividade-atelie-2026.2**
+
 Link: `https://drive.google.com/drive/folders/1xOomVe_kSIX6KEBFahVKmZzN4lYv64nb?usp=drive_link`
 
 ## Equipe
