@@ -24,21 +24,12 @@ Sistema web para gestão de um pequeno ateliê que produz e vende peças de roup
 
 ## Documentação
 
-A especificação de requisitos completa (requisitos funcionais e não funcionais, histórias de usuário, diagrama de classes, explicação dos diagramas de atividade e arquitetura) está divido em entregas dentro da pasta Documentos.
+Na pasta **Documentos**, estão disponíveis os arquivos referentes às **Entregas 1 e 2**, os **diagramas de atividade e de classes**, além do **feedback da validação realizada com a cliente Cirinha**.
 
-### Diagramas de atividade
+Logo abaixo, encontra-se o link para a pasta do **Google Drive**, que contém todos os diagramas e a comprovação, em áudio, da validação realizada com a cliente.
 
-Foi elaborado um diagrama de atividades para cada requisito funcional, do **RF01 ao RF29**.
 
-As imagens podem ser acessadas neste repositório, no caminho:
-
-```
-Documentos/Diagramas/Diagramas_Atividades_RF01-RF29
-```
-
-Pasta com as imagens: **Diagramas-atividade-atelie-2026.2**
-
-Link: `https://drive.google.com/drive/folders/1xOomVe_kSIX6KEBFahVKmZzN4lYv64nb?usp=drive_link`
+Link: `https://drive.google.com/drive/folders/1M-Qgs_vqO21xj2suu5uTPPz3KIr8-BeN?usp=sharing`
 
 ## Equipe
 
