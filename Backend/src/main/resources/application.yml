@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: cirinha-atelie
+  datasource:
+    url: ${DB_JDBC_URL:jdbc:postgresql://localhost:5432/cirinha_atelie}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+# No Supabase, informar a URL JDBC do pooler com sslmode=require.
+# Nao armazenar senhas, chaves ou tokens em arquivos versionados.
