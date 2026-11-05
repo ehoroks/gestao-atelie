@@ -10,7 +10,6 @@ import java.util.Objects;
 /**
  * Estado de dominio puro. O consumo de insumos e responsabilidade do
  * ServicoEncomenda, nao desta entidade (integracao I2).
- * clienteId e a ligacao temporaria para a entidade Cliente, da Trilha B (I4).
  */
 public class Encomenda {
     private Long id;
