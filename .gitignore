@@ -1,8 +1,0 @@
-**/target/
-**/.env
-**/.env.local
-**/.idea/
-**/*.iml
-**/.classpath
-**/.project
-**/.settings/
