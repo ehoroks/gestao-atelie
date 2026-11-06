@@ -442,4 +442,49 @@ cancelada); cada resposta informa a situacao. O historico de compras filtra pelo
 `clienteId`, exclui vendas de balcao sem cliente e retorna 404 quando o cliente
 nao existe.
 
-O proximo item da Trilha B e B12 (relatorios de vendas).
+O B12 (relatorios de vendas) esta descrito na proxima secao.
+
+---
+
+## B12 — Relatórios de vendas (entregue nesta branch)
+
+Disponibiliza vendas concluidas por intervalo, faturamento agrupado por dia,
+semana, mes ou periodo personalizado e produtos mais vendidos.
+
+| Camada | Arquivo |
+|---|---|
+| Consultas | `venda/VendaRepository.java` |
+| Caso de uso | `aplicacao/ServicoRelatorioVenda.java` |
+| API REST | `relatorio/RelatorioVendaController.java` |
+| Respostas | `relatorio/dto/FaturamentoPeriodoResponse.java`, `ProdutoMaisVendidoResponse.java` |
+
+### Endpoints
+
+| Metodo | Rota | Parametros | Resultado |
+|---|---|---|---|
+| GET | `/api/relatorios/vendas` | `inicio`, `fim` | vendas concluidas com itens no intervalo |
+| GET | `/api/relatorios/vendas/faturamento` | `inicio`, `fim`, `agruparPor` | faturamento por grupo |
+| GET | `/api/relatorios/vendas/produtos-mais-vendidos` | `inicio`, `fim`, `limite` opcional | ranking de produtos |
+
+Exemplos:
+
+```text
+GET /api/relatorios/vendas?inicio=2026-11-01&fim=2026-11-30
+GET /api/relatorios/vendas/faturamento?inicio=2026-11-01&fim=2026-11-30&agruparPor=SEMANA
+GET /api/relatorios/vendas/produtos-mais-vendidos?inicio=2026-11-01&fim=2026-11-30&limite=5
+```
+
+### Regras
+
+- Datas inicial e final sao inclusivas; periodo invertido retorna **422**.
+- Os relatorios consideram apenas vendas `CONCLUIDA`. Vendas abertas e
+  canceladas nao entram no faturamento nem no ranking.
+- `agruparPor` aceita `DIA`, `SEMANA`, `MES` e `PERIODO`. Semana inicia na
+  segunda-feira; intervalos parciais sao limitados as datas pedidas, e grupos
+  sem vendas aparecem com faturamento zero. `PERIODO` produz um total unico.
+- O ranking soma quantidades e subtotais dos itens, ordena por quantidade
+  decrescente e aceita `limite` de 1 a 100 (padrao 10). `valorVendido` e o total
+  bruto dos itens, antes do desconto aplicado a venda.
+
+Os testes de integracao cobrem filtro de vendas concluidas, agrupamento e dias
+sem vendas, exclusao de cancelamentos do relatorio e limite do ranking.

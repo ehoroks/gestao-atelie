@@ -9,6 +9,7 @@ import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface VendaRepository extends JpaRepository<Venda, Long> {
 
@@ -29,6 +30,11 @@ public interface VendaRepository extends JpaRepository<Venda, Long> {
     @EntityGraph(attributePaths = "itens")
     @Query("select v from Venda v where v.clienteId = :clienteId order by v.criadoEm desc, v.id desc")
     List<Venda> listarHistoricoDoCliente(@Param("clienteId") Long clienteId);
+
+    /** Vendas concluidas em intervalo semiaberto; inclui os itens para relatorios. */
+    @EntityGraph(attributePaths = "itens")
+    List<Venda> findAllBySituacaoAndCriadoEmGreaterThanEqualAndCriadoEmLessThanOrderByCriadoEmAscIdAsc(
+            SituacaoVenda situacao, LocalDateTime inicio, LocalDateTime fimExclusivo);
 
     /** Serializa finalizacao/cancelamento para impedir baixa ou estorno duplicados. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
