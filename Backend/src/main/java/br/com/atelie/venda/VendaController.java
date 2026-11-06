@@ -45,6 +45,16 @@ public class VendaController {
         return servico.listar().stream().map(VendaResponse::de).toList();
     }
 
+    @GetMapping("/historico")
+    public List<VendaResponse> historico() {
+        return servico.historico().stream().map(VendaResponse::de).toList();
+    }
+
+    @GetMapping("/historico/clientes/{clienteId}")
+    public List<VendaResponse> historicoDoCliente(@PathVariable Long clienteId) {
+        return servico.historicoDoCliente(clienteId).stream().map(VendaResponse::de).toList();
+    }
+
     @GetMapping("/{id}")
     public VendaResponse buscar(@PathVariable Long id) {
         return VendaResponse.de(servico.buscarPorId(id));

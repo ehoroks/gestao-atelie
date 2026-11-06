@@ -74,6 +74,19 @@ public class ServicoVenda {
         return vendas.findAllByOrderByIdAsc();
     }
 
+    @Transactional(readOnly = true)
+    public List<Venda> historico() {
+        return vendas.listarHistorico();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Venda> historicoDoCliente(Long clienteId) {
+        if (!clientes.existsById(clienteId)) {
+            throw new RecursoNaoEncontradoException("Cliente", clienteId);
+        }
+        return vendas.listarHistoricoDoCliente(clienteId);
+    }
+
     @Transactional
     public ItemVenda adicionarItem(Long vendaId, Long produtoId,
                                    BigDecimal quantidade, BigDecimal precoAtualDoProduto) {
