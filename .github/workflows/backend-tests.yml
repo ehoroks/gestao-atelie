@@ -22,5 +22,5 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: Backend/pom.xml
-      - name: Testar sem precisar de banco (JUnit 5)
+      - name: Testar backend (JUnit 5 + PostgreSQL Testcontainers)
         run: mvn -B -ntp verify

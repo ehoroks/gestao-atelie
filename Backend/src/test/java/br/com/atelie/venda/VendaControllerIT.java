@@ -5,15 +5,11 @@ import br.com.atelie.catalogo.ProdutoRepository;
 import br.com.atelie.cliente.Cliente;
 import br.com.atelie.cliente.ClienteRepository;
 import br.com.atelie.estoque.UnidadeMedida;
+import br.com.atelie.infra.teste.IntegrationTestBase;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -27,14 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Fatia vertical de vendas: itens, estados e integracao de estoque. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Transactional
-class VendaControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+class VendaControllerIT extends IntegrationTestBase {
 
     @Autowired
     private VendaRepository vendas;

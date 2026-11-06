@@ -3,6 +3,9 @@ package br.com.atelie.aplicacao;
 import br.com.atelie.cliente.Cliente;
 import br.com.atelie.cliente.ClienteRepository;
 import br.com.atelie.comum.RecursoNaoEncontradoException;
+import br.com.atelie.comum.RegraNegocioException;
+import br.com.atelie.encomenda.EncomendaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +18,18 @@ import java.util.Objects;
 public class ServicoCliente {
 
     private final ClienteRepository clientes;
+    private final EncomendaRepository encomendas;
 
+    @Autowired
+    public ServicoCliente(ClienteRepository clientes, EncomendaRepository encomendas) {
+        this.clientes = Objects.requireNonNull(clientes, "repositorio de clientes e obrigatorio");
+        this.encomendas = Objects.requireNonNull(encomendas, "repositorio de encomendas e obrigatorio");
+    }
+
+    /** Construtor para testes do caso de uso isolado. */
     public ServicoCliente(ClienteRepository clientes) {
         this.clientes = Objects.requireNonNull(clientes, "repositorio de clientes e obrigatorio");
+        this.encomendas = null;
     }
 
     @Transactional
@@ -60,6 +72,9 @@ public class ServicoCliente {
     @Transactional
     public void excluir(Long id) {
         Cliente cliente = buscarPorId(id);
+        if (encomendas != null && encomendas.existsByCliente_Id(id)) {
+            throw new RegraNegocioException("Nao e possivel excluir cliente com encomendas");
+        }
         clientes.delete(cliente);
     }
 }
