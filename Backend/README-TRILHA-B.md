@@ -72,13 +72,14 @@ export DB_PASSWORD='sua-senha'
 mvn spring-boot:run
 ```
 
-O Flyway aplica `V200__cria_usuarios.sql` automaticamente na subida.
+O Flyway aplica automaticamente as migrations da Trilha B (`V200`, `V201`, `V202`...).
 A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B3**: `Venda`/`ItemVenda` com `precoUnitario` congelado, seguindo o mesmo
-   template (entidade + repository + service + controller + testes + migration).
+1. **B4**: agregado `Venda` + `adicionarItem`/`removerItem` apenas enquanto a venda
+   nao estiver finalizada, substituindo as fronteiras `vendaId`/`produtoId` por
+   associacoes JPA.
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
@@ -125,4 +126,45 @@ Mesmo padrao arquitetural da B1:
 - **Exclusao**: `DELETE` remove o registro. Quando `Venda` existir, sera preciso
   decidir entre bloquear exclusao de cliente com vendas (soft delete) ou usar
   `ON DELETE RESTRICT`.
+
+---
+
+## B3 — ItemVenda com preco congelado (entregue nesta branch)
+
+B3 e uma base de **dominio + persistencia**; a API de itens nasce na B4, junto com
+o agregado `Venda` (nao faz sentido criar item sem uma venda existente).
+
+| Camada | Arquivo |
+|---|---|
+| Entidade JPA | `venda/ItemVenda.java` |
+| Persistencia | `venda/ItemVendaRepository.java` |
+| Caso de uso | `aplicacao/ServicoItemVenda.java` |
+| Migration | `resources/db/migration/V202__cria_itens_venda.sql` |
+
+### Regra central
+
+`precoUnitario` e uma **copia congelada** do preco do produto no momento da
+criacao do item:
+
+- `ItemVenda` guarda apenas `produtoId` (fronteira temporaria) e nunca uma
+  referencia viva a `Produto`;
+- `precoUnitario` nao tem setter;
+- mudar `Produto.preco` depois **nao** altera itens ja registrados (coberto por
+  teste usando `ComposicaoPreco.aplicarComoPrecoDo`).
+
+Outras regras: `quantidade > 0` (ate 3 casas), `precoUnitario >= 0` (2 casas),
+`vendaId`/`produtoId` positivos. `calcularSubtotal()` = preco x quantidade, com
+arredondamento monetario HALF_UP.
+
+### Servico
+
+- `adicionar(vendaId, produtoId, quantidade, precoAtualDoProduto)` — congela o preco
+- `buscarPorId`, `listarPorVenda`, `remover`
+- `calcularSubtotalDaVenda(vendaId)`
+
+### Limites
+
+- `venda_id` e `produto_id` ainda nao tem FK: `vendas` nasce na B4 e `produtos`
+  depende da Trilha A. A B4 troca essas fronteiras por associacoes JPA.
+- A regra "so adicionar/remover com venda em aberto" pertence a B4.
 
