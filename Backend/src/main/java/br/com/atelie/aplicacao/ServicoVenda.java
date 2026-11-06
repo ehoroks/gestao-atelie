@@ -14,12 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Casos de uso da Trilha B (B4-B7): agregado Venda, manipulacao de itens,
- * desconto/pagamento e finalizacao.
+ * Casos de uso da Trilha B (B4-B8): agregado Venda, manipulacao de itens,
+ * desconto/pagamento, finalizacao e cancelamento.
  *
  * Toda alteracao de item passa por `Venda.adicionarItem`/`removerItem`, que
  * bloqueiam a operacao quando a venda nao esta em aberto.
@@ -115,7 +116,7 @@ public class ServicoVenda {
      */
     @Transactional
     public Venda finalizar(Long vendaId) {
-        Venda venda = buscarPorId(vendaId);
+        Venda venda = buscarPorIdParaAtualizacao(vendaId);
         venda.validarFinalizacao();
         if (estoqueDaVenda == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
@@ -127,5 +128,26 @@ public class ServicoVenda {
 
         vendas.flush();
         return venda;
+    }
+
+    /** B8: estorna o estoque e registra o cancelamento na mesma transacao. */
+    @Transactional
+    public Venda cancelar(Long vendaId, LocalDateTime data, String motivo) {
+        Venda venda = buscarPorIdParaAtualizacao(vendaId);
+        venda.validarCancelamento(data, motivo);
+        if (estoqueDaVenda == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Integracao com estoque indisponivel; venda nao foi cancelada");
+        }
+
+        estoqueDaVenda.estornarItensDaVenda(venda);
+        venda.cancelar(data, motivo);
+        vendas.flush();
+        return venda;
+    }
+
+    private Venda buscarPorIdParaAtualizacao(Long id) {
+        return vendas.buscarPorIdParaAtualizacao(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Venda", id));
     }
 }

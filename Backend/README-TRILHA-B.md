@@ -77,7 +77,7 @@ A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B8**: `cancelar(data, motivo)` — cancelar venda concluida e estornar estoque.
+1. **B9**: `gerarComprovante()` — emitir comprovante da venda.
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
@@ -213,7 +213,7 @@ Se informado, o cliente precisa existir (integra com a B2).
   congelar o preco corrente do catalogo na criacao do item continua pendente.
 - `produto_id` continua sem FK em `itens_venda`; a existencia do produto e
   validada durante a finalizacao da venda.
-- Comprovante e cancelamento ficam para B9/B8.
+- Cancelamento foi entregue na B8; comprovante fica para B9.
 
 ---
 
@@ -326,7 +326,49 @@ vendidos por meio da integracao I1.
 
 ### Proximos passos
 
-- **B8**: cancelar venda concluida e estornar o estoque (I5).
+- **B8**: cancelamento e estorno de estoque foram entregues na proxima secao.
 - **B9**: gerar comprovante da venda.
 - O request de adicionar item ainda recebe `precoUnitario`; buscar e congelar o
   preco do produto no servidor permanece uma integracao pendente.
+
+---
+
+## B8 — Cancelamento da venda e estorno de estoque (entregue nesta branch)
+
+Cancela uma venda concluida, registra data e motivo e devolve ao estoque os
+produtos vendidos pela integracao I5, dentro da mesma transacao.
+
+| Camada | Arquivo |
+|---|---|
+| Dominio | `venda/Venda.java` (`validarCancelamento`, `cancelar`) |
+| Caso de uso | `aplicacao/ServicoVenda.java` |
+| Porta e adaptador | `aplicacao/EstoqueDaVenda.java`, `aplicacao/AdaptadorEstoqueDaVenda.java` |
+| DTO | `venda/dto/CancelarVendaRequest.java` |
+| API REST | `venda/VendaController.java`, `venda/dto/VendaResponse.java` |
+| Migration | `resources/db/migration/V205__adiciona_cancelamento_venda.sql` |
+
+### Endpoint
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| POST | `/api/vendas/{id}/cancelar` | 200 + venda cancelada | 400, 404, 409, 422, 503 |
+
+Corpo:
+
+```json
+{"data":"2026-11-06T10:30:00","motivo":"cliente desistiu"}
+```
+
+### Regras
+
+- So uma venda `CONCLUIDA` pode ser cancelada. Venda aberta ou ja cancelada
+  retorna **409**, sem estornar estoque novamente.
+- Data e motivo sao obrigatorios; motivo aceita ate 500 caracteres. O resultado
+  guarda `canceladaEm` e `motivoCancelamento` na venda e os expoe na resposta.
+- O adaptador bloqueia os produtos, estorna todas as quantidades da venda e so
+  entao registra a transicao para `CANCELADA`. Falhas na integracao revertem a
+  operacao pela transacao.
+- O estorno nao exige que o produto continue ativo; ele apenas devolve o saldo.
+
+O teste de integracao cobre o ciclo finalizar/cancelar, a reposicao do saldo e a
+protecao contra estorno duplicado. O proximo passo e B9 (comprovante da venda).

@@ -4,6 +4,7 @@ import br.com.atelie.aplicacao.ServicoVenda;
 import br.com.atelie.venda.dto.AberturaVendaRequest;
 import br.com.atelie.venda.dto.AdicionarItemRequest;
 import br.com.atelie.venda.dto.AplicarDescontoRequest;
+import br.com.atelie.venda.dto.CancelarVendaRequest;
 import br.com.atelie.venda.dto.DefinirFormaPagamentoRequest;
 import br.com.atelie.venda.dto.ItemVendaResponse;
 import br.com.atelie.venda.dto.VendaResponse;
@@ -78,5 +79,11 @@ public class VendaController {
     @PostMapping("/{id}/finalizar")
     public VendaResponse finalizar(@PathVariable Long id) {
         return VendaResponse.de(servico.finalizar(id));
+    }
+
+    @PostMapping("/{id}/cancelar")
+    public VendaResponse cancelar(@PathVariable Long id,
+                                  @Valid @RequestBody CancelarVendaRequest request) {
+        return VendaResponse.de(servico.cancelar(id, request.data(), request.motivo()));
     }
 }
