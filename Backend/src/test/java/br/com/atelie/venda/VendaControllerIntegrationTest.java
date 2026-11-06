@@ -62,6 +62,19 @@ class VendaControllerIntegrationTest {
     }
 
     @Test
+    void naoFinalizaVendaVaziaENaoAlteraSeuEstado() throws Exception {
+        Long vendaId = abrirVenda();
+
+        mockMvc.perform(post("/api/vendas/{id}/finalizar", vendaId))
+                .andExpect(status().isUnprocessableEntity());
+
+        mockMvc.perform(get("/api/vendas/{id}", vendaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacao").value("EM_ABERTO"))
+                .andExpect(jsonPath("$.itens.length()").value(0));
+    }
+
+    @Test
     void removeItemEnquantoVendaEstaEmAberto() throws Exception {
         Long vendaId = abrirVenda();
         Long itemId = adicionarItem(vendaId, 10, "1", "12.50");
@@ -163,6 +176,11 @@ class VendaControllerIntegrationTest {
                                 {"valor":10.01}
                                 """))
                 .andExpect(status().isUnprocessableEntity());
+
+        mockMvc.perform(get("/api/vendas/{id}", vendaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacao").value("EM_ABERTO"))
+                .andExpect(jsonPath("$.desconto").value(0));
     }
 
     @Test
@@ -248,6 +266,29 @@ class VendaControllerIntegrationTest {
                         .content(pedidoCancelamento))
                 .andExpect(status().isConflict());
         assertThatSaldo(produtoId, "5.000");
+    }
+
+    @Test
+    void naoFinalizaVendaDuasVezesNemBaixaEstoqueNovamente() throws Exception {
+        Long produtoId = criarProdutoComEstoque("5");
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, produtoId, "2", "25.00");
+        mockMvc.perform(put("/api/vendas/{id}/forma-pagamento", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"formaPagamento":"PIX"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/vendas/{id}/finalizar", vendaId))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/vendas/{id}/finalizar", vendaId))
+                .andExpect(status().isConflict());
+
+        assertThatSaldo(produtoId, "3.000");
+        mockMvc.perform(get("/api/vendas/{id}", vendaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacao").value("CONCLUIDA"));
     }
 
     @Test
