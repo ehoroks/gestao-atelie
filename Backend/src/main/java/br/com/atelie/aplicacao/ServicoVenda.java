@@ -2,6 +2,7 @@ package br.com.atelie.aplicacao;
 
 import br.com.atelie.cliente.ClienteRepository;
 import br.com.atelie.comum.RecursoNaoEncontradoException;
+import br.com.atelie.venda.FormaPagamento;
 import br.com.atelie.venda.ItemVenda;
 import br.com.atelie.venda.Venda;
 import br.com.atelie.venda.VendaRepository;
@@ -63,5 +64,21 @@ public class ServicoVenda {
         Venda venda = buscarPorId(vendaId);
         venda.removerItem(itemId);
         vendas.flush();
+    }
+
+    @Transactional
+    public Venda aplicarDesconto(Long vendaId, BigDecimal valor) {
+        Venda venda = buscarPorId(vendaId);
+        venda.aplicarDesconto(valor);
+        vendas.flush();
+        return venda;
+    }
+
+    @Transactional
+    public Venda definirFormaPagamento(Long vendaId, FormaPagamento formaPagamento) {
+        Venda venda = buscarPorId(vendaId);
+        venda.definirFormaPagamento(formaPagamento);
+        vendas.flush();
+        return venda;
     }
 }

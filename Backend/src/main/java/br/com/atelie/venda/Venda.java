@@ -16,6 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,6 +48,14 @@ public class Venda {
     @Column(name = "situacao", nullable = false, length = 20)
     private SituacaoVenda situacao = SituacaoVenda.EM_ABERTO;
 
+    /** Desconto absoluto (em reais), nunca percentual. */
+    @Column(name = "desconto", nullable = false, precision = 12, scale = 2)
+    private BigDecimal desconto = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "forma_pagamento", length = 20)
+    private FormaPagamento formaPagamento;
+
     @Column(name = "criado_em", nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 
@@ -75,24 +84,54 @@ public class Venda {
 
     public ItemVenda adicionarItem(Long produtoId, BigDecimal quantidade,
                                    BigDecimal precoAtualDoProduto) {
-        exigirEdicaoDeItens();
+        exigirVendaEmAberto();
         ItemVenda item = ItemVenda.comPrecoCongelado(this, produtoId, quantidade, precoAtualDoProduto);
         itens.add(item);
         return item;
     }
 
     public void removerItem(Long itemId) {
-        exigirEdicaoDeItens();
+        exigirVendaEmAberto();
         boolean removido = itens.removeIf(item -> Objects.equals(item.getId(), itemId));
         if (!removido) {
             throw new RecursoNaoEncontradoException("ItemVenda", itemId);
         }
     }
 
-    private void exigirEdicaoDeItens() {
+    /**
+     * B5: desconto absoluto em reais. Nao pode ser negativo nem exceder o
+     * subtotal atual dos itens. A API nao aceita desconto percentual.
+     */
+    public void aplicarDesconto(BigDecimal valor) {
+        exigirVendaEmAberto();
+        if (valor == null || valor.signum() < 0) {
+            throw new RegraNegocioException("desconto nao pode ser negativo");
+        }
+        BigDecimal normalizado = valor.setScale(2, RoundingMode.HALF_UP);
+        if (normalizado.compareTo(subtotalAtual()) > 0) {
+            throw new RegraNegocioException("desconto nao pode exceder o subtotal da venda");
+        }
+        this.desconto = normalizado;
+    }
+
+    /** B5: forma de pagamento so pode ser definida com a venda em aberto. */
+    public void definirFormaPagamento(FormaPagamento formaPagamento) {
+        exigirVendaEmAberto();
+        this.formaPagamento = Objects.requireNonNull(
+                formaPagamento, "forma de pagamento e obrigatoria");
+    }
+
+    private void exigirVendaEmAberto() {
         if (!situacao.permiteEdicaoDeItens()) {
             throw new VendaNaoEditavelException(situacao);
         }
+    }
+
+    /** Interno por enquanto; a B6 expoe `calcularSubtotal`/`calcularValorFinal`. */
+    private BigDecimal subtotalAtual() {
+        return itens.stream()
+                .map(ItemVenda::calcularSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**
@@ -111,6 +150,8 @@ public class Venda {
     public Long getId() { return id; }
     public Long getClienteId() { return clienteId; }
     public SituacaoVenda getSituacao() { return situacao; }
+    public BigDecimal getDesconto() { return desconto; }
+    public FormaPagamento getFormaPagamento() { return formaPagamento; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
 
     public List<ItemVenda> getItens() {

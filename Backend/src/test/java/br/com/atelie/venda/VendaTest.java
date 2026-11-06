@@ -87,4 +87,80 @@ class VendaTest {
         assertThatThrownBy(() -> venda.alterarSituacao(SituacaoVenda.EM_ABERTO))
                 .isInstanceOf(TransicaoInvalidaException.class);
     }
+
+    @Test
+    void aplicaDescontoAbsolutoMenorQueSubtotal() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+
+        venda.aplicarDesconto(new BigDecimal("15.55"));
+
+        assertThat(venda.getDesconto()).isEqualByComparingTo("15.55");
+    }
+
+    @Test
+    void descontoNaoPodeSerNegativo() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+
+        assertThatThrownBy(() -> venda.aplicarDesconto(new BigDecimal("-1.00")))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("desconto");
+    }
+
+    @Test
+    void descontoNaoPodeExcederSubtotal() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+
+        assertThatThrownBy(() -> venda.aplicarDesconto(new BigDecimal("100.01")))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("subtotal");
+    }
+
+    @Test
+    void descontoEhArredondadoParaDuasCasas() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+
+        venda.aplicarDesconto(new BigDecimal("10.555"));
+
+        assertThat(venda.getDesconto()).isEqualByComparingTo("10.56");
+    }
+
+    @Test
+    void naoAplicaDescontoAposFinalizar() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+        venda.alterarSituacao(SituacaoVenda.CONCLUIDA);
+
+        assertThatThrownBy(() -> venda.aplicarDesconto(BigDecimal.TEN))
+                .isInstanceOf(VendaNaoEditavelException.class);
+    }
+
+    @Test
+    void defineFormaPagamento() {
+        Venda venda = new Venda(null);
+
+        venda.definirFormaPagamento(FormaPagamento.PIX);
+
+        assertThat(venda.getFormaPagamento()).isEqualTo(FormaPagamento.PIX);
+    }
+
+    @Test
+    void formaDePagamentoEhObrigatoria() {
+        Venda venda = new Venda(null);
+
+        assertThatThrownBy(() -> venda.definirFormaPagamento(null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void naoDefineFormaPagamentoAposFinalizar() {
+        Venda venda = new Venda(null);
+        venda.alterarSituacao(SituacaoVenda.CONCLUIDA);
+
+        assertThatThrownBy(() -> venda.definirFormaPagamento(FormaPagamento.PIX))
+                .isInstanceOf(VendaNaoEditavelException.class);
+    }
 }

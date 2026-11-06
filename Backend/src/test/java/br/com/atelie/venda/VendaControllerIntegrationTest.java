@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -113,6 +114,76 @@ class VendaControllerIntegrationTest {
                 .andExpect(jsonPath("$.campos.produtoId").exists())
                 .andExpect(jsonPath("$.campos.quantidade").exists())
                 .andExpect(jsonPath("$.campos.precoUnitario").exists());
+    }
+
+    @Test
+    void aplicaDescontoEDefineFormaDePagamento() throws Exception {
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, 10, "2", "50.00"); // subtotal = 100.00
+
+        mockMvc.perform(put("/api/vendas/{id}/desconto", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"valor":15.50}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.desconto").value(15.50));
+
+        mockMvc.perform(put("/api/vendas/{id}/forma-pagamento", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"formaPagamento":"PIX"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.formaPagamento").value("PIX"));
+
+        mockMvc.perform(get("/api/vendas/{id}", vendaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.desconto").value(15.50))
+                .andExpect(jsonPath("$.formaPagamento").value("PIX"));
+    }
+
+    @Test
+    void descontoMaiorQueSubtotalRetorna422() throws Exception {
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, 10, "1", "10.00");
+
+        mockMvc.perform(put("/api/vendas/{id}/desconto", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"valor":10.01}
+                                """))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void descontoInvalidoRetorna400() throws Exception {
+        Long vendaId = abrirVenda();
+
+        mockMvc.perform(put("/api/vendas/{id}/desconto", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"valor":-1}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.valor").exists());
+    }
+
+    @Test
+    void naoAplicaDescontoEmVendaFinalizada() throws Exception {
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, 10, "1", "10.00");
+
+        Venda venda = vendas.findById(vendaId).orElseThrow();
+        venda.alterarSituacao(SituacaoVenda.CONCLUIDA);
+        vendas.saveAndFlush(venda);
+
+        mockMvc.perform(put("/api/vendas/{id}/desconto", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"valor":1.00}
+                                """))
+                .andExpect(status().isConflict());
     }
 
     private Long abrirVenda() throws Exception {
