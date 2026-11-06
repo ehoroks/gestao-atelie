@@ -250,6 +250,19 @@ class VendaControllerIntegrationTest {
         assertThatSaldo(produtoId, "5.000");
     }
 
+    @Test
+    void geraComprovanteTextualDaVenda() throws Exception {
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, 10, "2", "25.00");
+
+        String comprovante = mockMvc.perform(get("/api/vendas/{id}/comprovante", vendaId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(comprovante).contains("COMPROVANTE DE VENDA", "Produto #10", "50,00",
+                "Subtotal:", "VALOR FINAL:", "Situacao: EM_ABERTO");
+    }
+
     private Long abrirVenda() throws Exception {
         return idDe(mockMvc.perform(post("/api/vendas"))
                 .andExpect(status().isCreated())

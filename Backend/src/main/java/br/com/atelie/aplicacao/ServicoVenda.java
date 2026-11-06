@@ -107,6 +107,11 @@ public class ServicoVenda {
         return venda;
     }
 
+    @Transactional(readOnly = true)
+    public String gerarComprovante(Long vendaId) {
+        return buscarPorId(vendaId).gerarComprovante();
+    }
+
     /**
      * B7: finaliza a venda (validacoes no dominio) e dispara a baixa de
      * estoque pela porta {@link EstoqueDaVenda}.

@@ -10,6 +10,7 @@ import br.com.atelie.venda.dto.ItemVendaResponse;
 import br.com.atelie.venda.dto.VendaResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -85,5 +86,10 @@ public class VendaController {
     public VendaResponse cancelar(@PathVariable Long id,
                                   @Valid @RequestBody CancelarVendaRequest request) {
         return VendaResponse.de(servico.cancelar(id, request.data(), request.motivo()));
+    }
+
+    @GetMapping(value = "/{id}/comprovante", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String gerarComprovante(@PathVariable Long id) {
+        return servico.gerarComprovante(id);
     }
 }

@@ -17,10 +17,13 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -36,6 +39,9 @@ import java.util.Objects;
 @Entity
 @Table(name = "vendas")
 public class Venda {
+
+    private static final DateTimeFormatter FORMATO_DATA_COMPROVANTE =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -203,6 +209,49 @@ public class Venda {
     public BigDecimal calcularValorFinal() {
         BigDecimal valorFinal = calcularSubtotal().subtract(desconto);
         return valorFinal.signum() < 0 ? BigDecimal.ZERO : valorFinal;
+    }
+
+    /** B9: gera uma representacao textual dos dados congelados da venda. */
+    public String gerarComprovante() {
+        NumberFormat moeda = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"));
+        moeda.setRoundingMode(RoundingMode.HALF_UP);
+        String identificador = id == null ? "N/D" : id.toString();
+        String data = criadoEm == null ? "nao informada" : criadoEm.format(FORMATO_DATA_COMPROVANTE);
+        String cliente = clienteId == null ? "Venda de balcao" : "Cliente #%d".formatted(clienteId);
+
+        StringBuilder comprovante = new StringBuilder()
+                .append("========================================\n")
+                .append("             ATELIE CIRINHA\n")
+                .append("          COMPROVANTE DE VENDA\n")
+                .append("========================================\n")
+                .append("Venda: #").append(identificador).append('\n')
+                .append("Data: ").append(data).append('\n')
+                .append("Cliente: ").append(cliente).append('\n')
+                .append("Situacao: ").append(situacao).append("\n\n")
+                .append("ITENS\n");
+
+        for (ItemVenda item : itens) {
+            comprovante.append("Produto #").append(item.getProdutoId())
+                    .append(" | ").append(item.getQuantidade().stripTrailingZeros().toPlainString())
+                    .append(" x ").append(moeda.format(item.getPrecoUnitario()))
+                    .append(" = ").append(moeda.format(item.calcularSubtotal())).append('\n');
+        }
+
+        comprovante.append("\nSubtotal: ").append(moeda.format(calcularSubtotal())).append('\n')
+                .append("Desconto: ").append(moeda.format(desconto)).append('\n')
+                .append("VALOR FINAL: ").append(moeda.format(calcularValorFinal())).append('\n')
+                .append("Forma de pagamento: ")
+                .append(formaPagamento == null ? "nao definida" : formaPagamento).append('\n');
+
+        if (situacao == SituacaoVenda.CANCELADA) {
+            comprovante.append("Cancelada em: ")
+                    .append(canceladaEm == null ? "nao informado" : canceladaEm.format(FORMATO_DATA_COMPROVANTE))
+                    .append('\n')
+                    .append("Motivo do cancelamento: ")
+                    .append(motivoCancelamento == null ? "nao informado" : motivoCancelamento).append('\n');
+        }
+
+        return comprovante.append("========================================\n").toString();
     }
 
     /**
