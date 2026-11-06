@@ -77,9 +77,8 @@ A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B4**: agregado `Venda` + `adicionarItem`/`removerItem` apenas enquanto a venda
-   nao estiver finalizada, substituindo as fronteiras `vendaId`/`produtoId` por
-   associacoes JPA.
+1. **B5**: `aplicarDesconto` (definir se absoluto ou percentual) e
+   `definirFormaPagamento`.
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
@@ -164,7 +163,56 @@ arredondamento monetario HALF_UP.
 
 ### Limites
 
-- `venda_id` e `produto_id` ainda nao tem FK: `vendas` nasce na B4 e `produtos`
-  depende da Trilha A. A B4 troca essas fronteiras por associacoes JPA.
-- A regra "so adicionar/remover com venda em aberto" pertence a B4.
+- `produto_id` ainda nao tem FK: `produtos` depende da Trilha A.
+- A associacao com `Venda` e as regras de adicionar/remover foram implementadas
+  na B4 (ver secao abaixo).
+
+---
+
+## B4 — Venda + adicionar/remover itens (entregue nesta branch)
+
+Cria o agregado `Venda` e integra `ItemVenda` a ele via JPA, substituindo a
+fronteira `vendaId` da B3.
+
+| Camada | Arquivo |
+|---|---|
+| Entidade JPA | `venda/Venda.java` |
+| Persistencia | `venda/VendaRepository.java` |
+| Caso de uso | `aplicacao/ServicoVenda.java` |
+| API REST | `venda/VendaController.java` |
+| DTOs | `venda/dto/AberturaVendaRequest`, `AdicionarItemRequest`, `VendaResponse`, `ItemVendaResponse` |
+| Migration | `resources/db/migration/V203__cria_vendas.sql` |
+
+### Endpoints
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| POST | `/api/vendas` | 201 + venda | 400, 404, 422 |
+| GET | `/api/vendas` | 200 + lista | — |
+| GET | `/api/vendas/{id}` | 200 + venda/itens | 404 |
+| POST | `/api/vendas/{id}/itens` | 201 + item | 400, 404, 409, 422 |
+| DELETE | `/api/vendas/{id}/itens/{itemId}` | 204 | 404, 409 |
+
+Corpo do `POST /api/vendas` e opcional: sem `clienteId` a venda e de balcao.
+Se informado, o cliente precisa existir (integra com a B2).
+
+### Regras
+
+- `adicionarItem`/`removerItem` so funcionam com `situacao == EM_ABERTO`.
+  Depois de `CONCLUIDA` ou `CANCELADA` a API devolve **409**
+  (`VendaNaoEditavelException`).
+- O item continua congelando `precoUnitario` na criacao (regra da B3).
+- `Venda` carrega os itens com `@EntityGraph` porque `open-in-view` esta
+  desligado.
+- `alterarSituacao` e interno (package-private); `finalizar()` e
+  `cancelar(data, motivo)` entram na B7/B8.
+
+### Limites
+
+- `precoUnitario` ainda e aceito no request: nao existe `ProdutoRepository`
+  (Trilha A). Na integracao I1 o preco passa a ser lido de `Produto.preco` no
+  servidor.
+- `produto_id` continua sem FK ate a Trilha A expor a tabela de produtos.
+- Subtotal/valor final, desconto, forma de pagamento e comprovante ficam para
+  B5/B6/B7/B9.
 

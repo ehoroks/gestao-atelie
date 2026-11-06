@@ -7,6 +7,7 @@ import br.com.atelie.comum.RecursoNaoEncontradoException;
 import br.com.atelie.comum.RegraNegocioException;
 import br.com.atelie.comum.TransicaoInvalidaException;
 import br.com.atelie.usuario.CredenciaisInvalidasException;
+import br.com.atelie.venda.VendaNaoEditavelException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,11 @@ public class TratadorGlobalDeExcecoes {
 
     @ExceptionHandler(TransicaoInvalidaException.class)
     public ResponseEntity<ErroResposta> tratarTransicao(TransicaoInvalidaException ex) {
+        return resposta(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(VendaNaoEditavelException.class)
+    public ResponseEntity<ErroResposta> tratarVendaNaoEditavel(VendaNaoEditavelException ex) {
         return resposta(HttpStatus.CONFLICT, ex.getMessage());
     }
 

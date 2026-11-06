@@ -14,10 +14,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ItemVendaTest {
 
+    private final Venda venda = new Venda(null);
+
     @Test
     void subtotalMultiplicaPrecoCongeladoPelaQuantidade() {
         ItemVenda item = new ItemVenda(
-                1L, 2L, new BigDecimal("2.5"), new BigDecimal("19.90"));
+                venda, 2L, new BigDecimal("2.5"), new BigDecimal("19.90"));
 
         assertThat(item.calcularSubtotal()).isEqualByComparingTo("49.75");
     }
@@ -28,7 +30,7 @@ class ItemVendaTest {
                 "Bolsa", UnidadeMedida.UN, BigDecimal.ZERO, null, new BigDecimal("50.00"));
 
         ItemVenda item = ItemVenda.comPrecoCongelado(
-                1L, 1L, BigDecimal.ONE, produto.getPreco());
+                venda, 1L, BigDecimal.ONE, produto.getPreco());
 
         // Trilha C altera o preco do produto depois da venda do item.
         Insumo tecido = new Insumo("Tecido", UnidadeMedida.M, BigDecimal.ZERO, new BigDecimal("10.00"));
@@ -44,7 +46,7 @@ class ItemVendaTest {
     @Test
     void quantidadeDeveSerPositiva() {
         assertThatThrownBy(() -> new ItemVenda(
-                1L, 2L, BigDecimal.ZERO, new BigDecimal("10.00")))
+                venda, 2L, BigDecimal.ZERO, new BigDecimal("10.00")))
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessageContaining("quantidade");
     }
@@ -52,20 +54,20 @@ class ItemVendaTest {
     @Test
     void precoNaoPodeSerNegativo() {
         assertThatThrownBy(() -> new ItemVenda(
-                1L, 2L, BigDecimal.ONE, new BigDecimal("-0.01")))
+                venda, 2L, BigDecimal.ONE, new BigDecimal("-0.01")))
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessageContaining("preco");
     }
 
     @Test
-    void identificadoresDevemSerPositivos() {
+    void vendaEProdutoSaoObrigatorios() {
         assertThatThrownBy(() -> new ItemVenda(
-                0L, 2L, BigDecimal.ONE, BigDecimal.TEN))
-                .isInstanceOf(RegraNegocioException.class)
-                .hasMessageContaining("vendaId");
+                null, 2L, BigDecimal.ONE, BigDecimal.TEN))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("venda");
 
         assertThatThrownBy(() -> new ItemVenda(
-                1L, null, BigDecimal.ONE, BigDecimal.TEN))
+                venda, null, BigDecimal.ONE, BigDecimal.TEN))
                 .isInstanceOf(RegraNegocioException.class)
                 .hasMessageContaining("produtoId");
     }
@@ -73,7 +75,7 @@ class ItemVendaTest {
     @Test
     void subtotalArredondaParaDuasCasas() {
         ItemVenda item = new ItemVenda(
-                1L, 2L, new BigDecimal("3"), new BigDecimal("3.333"));
+                venda, 2L, new BigDecimal("3"), new BigDecimal("3.333"));
 
         assertThat(item.getPrecoUnitario()).isEqualByComparingTo("3.33");
         assertThat(item.calcularSubtotal()).isEqualByComparingTo("9.99");
