@@ -163,4 +163,37 @@ class VendaTest {
         assertThatThrownBy(() -> venda.definirFormaPagamento(FormaPagamento.PIX))
                 .isInstanceOf(VendaNaoEditavelException.class);
     }
+
+    // --- B6: subtotal e valor final ---
+
+    @Test
+    void subtotalSomaOsItens() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, new BigDecimal("2"), new BigDecimal("25.00"));
+        venda.adicionarItem(20L, BigDecimal.ONE, new BigDecimal("10.00"));
+
+        assertThat(venda.calcularSubtotal()).isEqualByComparingTo("60.00");
+    }
+
+    @Test
+    void subtotalSemItensEhZero() {
+        assertThat(new Venda(null).calcularSubtotal()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void valorFinalSubtraiDesconto() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+        venda.aplicarDesconto(new BigDecimal("15.50"));
+
+        assertThat(venda.calcularValorFinal()).isEqualByComparingTo("84.50");
+    }
+
+    @Test
+    void valorFinalSemDescontoIgualaSubtotal() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("50.00"));
+
+        assertThat(venda.calcularValorFinal()).isEqualByComparingTo("50.00");
+    }
 }
