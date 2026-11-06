@@ -121,6 +121,33 @@ public class Venda {
                 formaPagamento, "forma de pagamento e obrigatoria");
     }
 
+    /**
+     * B7: finaliza a venda. Exige venda em aberto, pelo menos um item e forma
+     * de pagamento definida; depois transiciona para CONCLUIDA.
+     *
+     * A baixa de estoque (I1) NAO acontece aqui: ela e coordenada por
+     * `ServicoVenda` atraves da porta `EstoqueDaVenda`, para nunca haver
+     * chamada direta de entidade para entidade.
+     */
+    public void finalizar() {
+        validarFinalizacao();
+        alterarSituacao(SituacaoVenda.CONCLUIDA);
+    }
+
+    /** Valida as precondicoes sem alterar o estado, para a orquestracao do estoque. */
+    public void validarFinalizacao() {
+        if (situacao != SituacaoVenda.EM_ABERTO) {
+            throw new TransicaoInvalidaException(situacao, SituacaoVenda.CONCLUIDA);
+        }
+        if (itens.isEmpty()) {
+            throw new RegraNegocioException("venda nao pode ser finalizada sem itens");
+        }
+        if (formaPagamento == null) {
+            throw new RegraNegocioException(
+                    "venda nao pode ser finalizada sem forma de pagamento");
+        }
+    }
+
     private void exigirVendaEmAberto() {
         if (!situacao.permiteEdicaoDeItens()) {
             throw new VendaNaoEditavelException(situacao);

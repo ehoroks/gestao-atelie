@@ -196,4 +196,57 @@ class VendaTest {
 
         assertThat(venda.calcularValorFinal()).isEqualByComparingTo("50.00");
     }
+
+    // --- B7: finalizar ---
+
+    @Test
+    void finalizaVendaComItensEPagamento() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("50.00"));
+        venda.definirFormaPagamento(FormaPagamento.PIX);
+
+        venda.finalizar();
+
+        assertThat(venda.getSituacao()).isEqualTo(SituacaoVenda.CONCLUIDA);
+    }
+
+    @Test
+    void naoFinalizaVendaSemItens() {
+        Venda venda = new Venda(null);
+        venda.definirFormaPagamento(FormaPagamento.PIX);
+
+        assertThatThrownBy(venda::finalizar)
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("itens");
+    }
+
+    @Test
+    void naoFinalizaVendaSemFormaPagamento() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("50.00"));
+
+        assertThatThrownBy(venda::finalizar)
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("forma de pagamento");
+    }
+
+    @Test
+    void naoFinalizaVendaDuasVezes() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("50.00"));
+        venda.definirFormaPagamento(FormaPagamento.DINHEIRO);
+        venda.finalizar();
+
+        assertThatThrownBy(venda::finalizar)
+                .isInstanceOf(TransicaoInvalidaException.class);
+    }
+
+    @Test
+    void naoFinalizaVendaJaCancelada() {
+        Venda venda = new Venda(null);
+        venda.alterarSituacao(SituacaoVenda.CANCELADA);
+
+        assertThatThrownBy(venda::finalizar)
+                .isInstanceOf(TransicaoInvalidaException.class);
+    }
 }
