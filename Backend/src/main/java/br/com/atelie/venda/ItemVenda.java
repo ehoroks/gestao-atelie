@@ -3,19 +3,23 @@ package br.com.atelie.venda;
 import br.com.atelie.comum.RegraNegocioException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
- * Trilha B - B3. Item de uma venda.
+ * Trilha B - B3/B4. Item de uma venda.
  *
  * REGRA CENTRAL: `precoUnitario` e uma COPIA CONGELADA do preco do produto no
  * momento em que o item foi criado. Esta entidade guarda apenas `produtoId`
@@ -23,8 +27,9 @@ import java.time.LocalDateTime;
  * a `Produto`; portanto, mudar o preco do produto depois NAO altera itens ja
  * existentes.
  *
- * `vendaId` tambem e uma fronteira temporaria: o agregado `Venda` e a API de
- * itens entram na B4, que substitui este vinculo por associacao JPA.
+ * A partir da B4 o item pertence ao agregado `Venda` (associacao JPA). As
+ * operacoes de adicionar/remover passam pelos metodos de `Venda`, que bloqueiam
+ * alteracoes quando a venda nao esta em aberto.
  */
 @Entity
 @Table(name = "itens_venda",
@@ -38,8 +43,9 @@ public class ItemVenda {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "venda_id", nullable = false)
-    private Long vendaId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "venda_id", nullable = false)
+    private Venda venda;
 
     @Column(name = "produto_id", nullable = false)
     private Long produtoId;
@@ -58,8 +64,8 @@ public class ItemVenda {
     protected ItemVenda() {
     }
 
-    public ItemVenda(Long vendaId, Long produtoId, BigDecimal quantidade, BigDecimal precoUnitario) {
-        this.vendaId = exigirIdPositivo(vendaId, "vendaId");
+    public ItemVenda(Venda venda, Long produtoId, BigDecimal quantidade, BigDecimal precoUnitario) {
+        this.venda = Objects.requireNonNull(venda, "venda e obrigatoria");
         this.produtoId = exigirIdPositivo(produtoId, "produtoId");
         this.quantidade = validarQuantidade(quantidade);
         this.precoUnitario = validarPreco(precoUnitario);
@@ -69,9 +75,9 @@ public class ItemVenda {
      * Cria o item a partir do preco atual do produto. O valor e copiado; a
      * entidade nao guarda nenhuma referencia ao produto.
      */
-    public static ItemVenda comPrecoCongelado(Long vendaId, Long produtoId,
+    public static ItemVenda comPrecoCongelado(Venda venda, Long produtoId,
                                               BigDecimal quantidade, BigDecimal precoAtualDoProduto) {
-        return new ItemVenda(vendaId, produtoId, quantidade, precoAtualDoProduto);
+        return new ItemVenda(venda, produtoId, quantidade, precoAtualDoProduto);
     }
 
     @PrePersist
@@ -115,7 +121,7 @@ public class ItemVenda {
     // --- acesso ---
 
     public Long getId() { return id; }
-    public Long getVendaId() { return vendaId; }
+    public Venda getVenda() { return venda; }
     public Long getProdutoId() { return produtoId; }
     public BigDecimal getQuantidade() { return quantidade; }
     public BigDecimal getPrecoUnitario() { return precoUnitario; }
