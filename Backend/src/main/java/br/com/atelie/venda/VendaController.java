@@ -74,4 +74,9 @@ public class VendaController {
             @Valid @RequestBody DefinirFormaPagamentoRequest request) {
         return VendaResponse.de(servico.definirFormaPagamento(id, request.formaPagamento()));
     }
+
+    @PostMapping("/{id}/finalizar")
+    public VendaResponse finalizar(@PathVariable Long id) {
+        return VendaResponse.de(servico.finalizar(id));
+    }
 }

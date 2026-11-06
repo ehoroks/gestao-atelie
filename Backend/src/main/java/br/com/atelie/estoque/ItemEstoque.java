@@ -1,6 +1,14 @@
 package br.com.atelie.estoque;
 
 import br.com.atelie.comum.RegraNegocioException;
+import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Transient;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -9,21 +17,32 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * CONTRATO CONGELADO - Sprint 0.
- * Estado, assinaturas e validacoes de entrada sao definitivos.
- * Os corpos marcados com TODO-T1 pertencem a Trilha 1 (atividades A1/A2).
+ * Contrato de Sprint 0 com as operacoes de estoque implementadas na Trilha A.
  *
  * Nenhuma subclasse altera 'quantidade' diretamente: toda mudanca passa
  * pelos tres metodos abaixo, que sao os unicos que geram movimentacao.
  */
+@MappedSuperclass
 public abstract class ItemEstoque {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Long          id;
+
+    @Column(name = "nome", nullable = false, length = 120)
     protected String        nome;
+
+    @Column(name = "quantidade", nullable = false, precision = 12, scale = 3)
     protected BigDecimal    quantidade    = BigDecimal.ZERO;
+
+    @Column(name = "unidade_medida", nullable = false, length = 10)
+    @Enumerated(EnumType.STRING)
     protected UnidadeMedida unidadeMedida;
+
+    @Column(name = "estoque_minimo", nullable = false, precision = 12, scale = 3)
     protected BigDecimal    estoqueMinimo = BigDecimal.ZERO;
 
+    @Transient
     private final List<MovimentacaoEstoque> historico = new ArrayList<>();
 
     protected ItemEstoque() {
@@ -40,14 +59,28 @@ public abstract class ItemEstoque {
 
     /** Soma ao saldo e registra ENTRADA. */
     public void registrarEntrada(BigDecimal quantidade) {
+        registrarEntrada(quantidade, null);
+    }
+
+    void registrarEntrada(BigDecimal quantidade, String motivo) {
         validarQuantidadePositiva(quantidade);
-        throw new UnsupportedOperationException("TODO-T1 (A1): registrarEntrada");
+        this.quantidade = this.quantidade.add(quantidade);
+        registrarMovimentacao(TipoMovimentacao.ENTRADA, quantidade, motivo);
     }
 
     /** Subtrai do saldo e registra SAIDA. Nunca deixa o saldo negativo. */
     public void registrarSaida(BigDecimal quantidade) {
+        registrarSaida(quantidade, null);
+    }
+
+    void registrarSaida(BigDecimal quantidade, String motivo) {
         validarQuantidadePositiva(quantidade);
-        throw new UnsupportedOperationException("TODO-T1 (A1): registrarSaida");
+        if (!temEstoqueSuficiente(quantidade)) {
+            throw new br.com.atelie.comum.EstoqueInsuficienteException(
+                    nome, this.quantidade, quantidade);
+        }
+        this.quantidade = this.quantidade.subtract(quantidade);
+        registrarMovimentacao(TipoMovimentacao.SAIDA, quantidade, motivo);
     }
 
     /** Sobrescreve o saldo e registra AJUSTE. Motivo obrigatorio. */
@@ -55,17 +88,20 @@ public abstract class ItemEstoque {
         exigirNaoNegativo(novaQuantidade, "novaQuantidade");
         validarUnidade(novaQuantidade);
         exigirTexto(motivo, "motivo");
-        throw new UnsupportedOperationException("TODO-T1 (A1): ajustarQuantidade");
+        BigDecimal saldoAnterior = this.quantidade;
+        this.quantidade = novaQuantidade;
+        registrarMovimentacao(TipoMovimentacao.AJUSTE,
+                novaQuantidade.subtract(saldoAnterior), motivo.trim());
     }
 
     public boolean temEstoqueSuficiente(BigDecimal quantidade) {
         validarQuantidadePositiva(quantidade);
-        throw new UnsupportedOperationException("TODO-T1 (A2): temEstoqueSuficiente");
+        return this.quantidade.compareTo(quantidade) >= 0;
     }
 
     /** AMBIGUIDADE 9: saldo == estoqueMinimo conta como baixo? Decidir no Sprint 0. */
     public boolean estaComEstoqueBaixo() {
-        throw new UnsupportedOperationException("TODO-T1 (A2): estaComEstoqueBaixo");
+        return quantidade.compareTo(estoqueMinimo) <= 0;
     }
 
     // --- historico ---

@@ -77,8 +77,7 @@ A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B7**: `finalizar()` — exigir itens >= 1 e forma de pagamento definida;
-   integrar baixa de estoque (I1, Trilha A).
+1. **B8**: `cancelar(data, motivo)` — cancelar venda concluida e estornar estoque.
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
@@ -204,17 +203,17 @@ Se informado, o cliente precisa existir (integra com a B2).
 - O item continua congelando `precoUnitario` na criacao (regra da B3).
 - `Venda` carrega os itens com `@EntityGraph` porque `open-in-view` esta
   desligado.
-- `alterarSituacao` e interno (package-private); `finalizar()` e
-  `cancelar(data, motivo)` entram na B7/B8.
+- `alterarSituacao` e interno (package-private); a finalizacao entrou na B7 e
+  `cancelar(data, motivo)` fica para B8.
 
 ### Limites
 
-- `precoUnitario` ainda e aceito no request: nao existe `ProdutoRepository`
-  (Trilha A). Na integracao I1 o preco passa a ser lido de `Produto.preco` no
-  servidor.
-- `produto_id` continua sem FK ate a Trilha A expor a tabela de produtos.
-- Subtotal/valor final, desconto, forma de pagamento e comprovante ficam para
-  B5/B6/B7/B9.
+- `precoUnitario` ainda e aceito no request por compatibilidade. A B7 usa o
+  `ProdutoRepository` para localizar o produto e baixar o estoque ao finalizar;
+  congelar o preco corrente do catalogo na criacao do item continua pendente.
+- `produto_id` continua sem FK em `itens_venda`; a existencia do produto e
+  validada durante a finalizacao da venda.
+- Comprovante e cancelamento ficam para B9/B8.
 
 ---
 
@@ -254,7 +253,7 @@ Exemplos:
 - Desconto e forma de pagamento so podem ser definidos com a venda `EM_ABERTO`;
   depois de finalizada/cancelada a API devolve **409**.
 - A validacao do desconto usa o subtotal interno; `calcularSubtotal` e
-  `calcularValorFinal` publicos entram na B6.
+  `calcularValorFinal` publicos foram entregues na B6.
 
 ---
 
@@ -290,3 +289,44 @@ Torna publicos os calculos que a B5 usava internamente e os expoe na API.
 }
 ```
 
+---
+
+## B7 — Finalizacao da venda e baixa de estoque (entregue nesta branch)
+
+Finaliza uma venda valida e baixa, na mesma transacao, o estoque dos produtos
+vendidos por meio da integracao I1.
+
+| Camada | Arquivo |
+|---|---|
+| Dominio | `venda/Venda.java` (`validarFinalizacao`, `finalizar`) |
+| Caso de uso | `aplicacao/ServicoVenda.java` |
+| Porta e adaptador | `aplicacao/EstoqueDaVenda.java`, `aplicacao/AdaptadorEstoqueDaVenda.java` |
+| Catalogo | `catalogo/Produto.java`, `catalogo/ProdutoRepository.java` |
+| Estoque | `estoque/ItemEstoque.java`, `estoque/ServicoEstoqueJpa.java` |
+| API REST | `venda/VendaController.java` |
+| Migration de catalogo | `resources/db/migration/V100__cria_catalogo_e_estoque.sql` |
+
+### Endpoint
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| POST | `/api/vendas/{id}/finalizar` | 200 + venda concluida | 404, 409, 422, 503 |
+
+### Regras
+
+- Exige venda `EM_ABERTO`, pelo menos um item e forma de pagamento definida.
+- Produto inexistente retorna 404; produto desativado ou saldo insuficiente impede
+  a finalizacao. O estoque e validado e baixado antes de marcar a venda como
+  `CONCLUIDA`, na mesma transacao.
+- Repetir a finalizacao ou tentar finalizar uma venda cancelada gera conflito de
+  transicao (409).
+- A migration `V100` cria as tabelas `categorias` e `produtos`, mantendo a faixa
+  `V1xx` da Trilha A. A movimentacao gerada pelo dominio ainda e mantida em
+  memoria; persistir seu historico e trabalho da A3.
+
+### Proximos passos
+
+- **B8**: cancelar venda concluida e estornar o estoque (I5).
+- **B9**: gerar comprovante da venda.
+- O request de adicionar item ainda recebe `precoUnitario`; buscar e congelar o
+  preco do produto no servidor permanece uma integracao pendente.
