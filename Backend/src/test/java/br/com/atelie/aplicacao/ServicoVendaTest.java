@@ -2,6 +2,7 @@ package br.com.atelie.aplicacao;
 
 import br.com.atelie.cliente.ClienteRepository;
 import br.com.atelie.comum.RecursoNaoEncontradoException;
+import br.com.atelie.venda.FormaPagamento;
 import br.com.atelie.venda.ItemVenda;
 import br.com.atelie.venda.Venda;
 import br.com.atelie.venda.VendaRepository;
@@ -101,5 +102,28 @@ class ServicoVendaTest {
         servico.listar();
 
         verify(vendas).findAllByOrderByIdAsc();
+    }
+
+    @Test
+    void aplicaDescontoNaVendaCarregada() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+        when(vendas.findById(1L)).thenReturn(Optional.of(venda));
+
+        Venda atualizada = servico.aplicarDesconto(1L, new BigDecimal("20.00"));
+
+        assertThat(atualizada.getDesconto()).isEqualByComparingTo("20.00");
+        verify(vendas).flush();
+    }
+
+    @Test
+    void defineFormaDePagamentoNaVendaCarregada() {
+        Venda venda = new Venda(null);
+        when(vendas.findById(1L)).thenReturn(Optional.of(venda));
+
+        Venda atualizada = servico.definirFormaPagamento(1L, FormaPagamento.PIX);
+
+        assertThat(atualizada.getFormaPagamento()).isEqualTo(FormaPagamento.PIX);
+        verify(vendas).flush();
     }
 }

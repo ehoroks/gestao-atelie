@@ -3,6 +3,8 @@ package br.com.atelie.venda;
 import br.com.atelie.aplicacao.ServicoVenda;
 import br.com.atelie.venda.dto.AberturaVendaRequest;
 import br.com.atelie.venda.dto.AdicionarItemRequest;
+import br.com.atelie.venda.dto.AplicarDescontoRequest;
+import br.com.atelie.venda.dto.DefinirFormaPagamentoRequest;
 import br.com.atelie.venda.dto.ItemVendaResponse;
 import br.com.atelie.venda.dto.VendaResponse;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -57,5 +60,18 @@ public class VendaController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removerItem(@PathVariable Long id, @PathVariable Long itemId) {
         servico.removerItem(id, itemId);
+    }
+
+    @PutMapping("/{id}/desconto")
+    public VendaResponse aplicarDesconto(@PathVariable Long id,
+                                         @Valid @RequestBody AplicarDescontoRequest request) {
+        return VendaResponse.de(servico.aplicarDesconto(id, request.valor()));
+    }
+
+    @PutMapping("/{id}/forma-pagamento")
+    public VendaResponse definirFormaPagamento(
+            @PathVariable Long id,
+            @Valid @RequestBody DefinirFormaPagamentoRequest request) {
+        return VendaResponse.de(servico.definirFormaPagamento(id, request.formaPagamento()));
     }
 }

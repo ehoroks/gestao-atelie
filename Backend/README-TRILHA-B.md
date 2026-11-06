@@ -77,8 +77,8 @@ A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B5**: `aplicarDesconto` (definir se absoluto ou percentual) e
-   `definirFormaPagamento`.
+1. **B6**: `calcularSubtotal` e `calcularValorFinal` (subtotal - desconto, piso
+   em zero).
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
@@ -215,4 +215,44 @@ Se informado, o cliente precisa existir (integra com a B2).
 - `produto_id` continua sem FK ate a Trilha A expor a tabela de produtos.
 - Subtotal/valor final, desconto, forma de pagamento e comprovante ficam para
   B5/B6/B7/B9.
+
+---
+
+## B5 — Desconto e forma de pagamento (entregue nesta branch)
+
+| Camada | Arquivo |
+|---|---|
+| Dominio | `venda/Venda.java` (`aplicarDesconto`, `definirFormaPagamento`) |
+| Caso de uso | `aplicacao/ServicoVenda.java` |
+| API REST | `venda/VendaController.java` |
+| DTOs | `venda/dto/AplicarDescontoRequest`, `DefinirFormaPagamentoRequest` |
+| Migration | `resources/db/migration/V204__adiciona_desconto_e_pagamento.sql` |
+
+### Endpoints
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| PUT | `/api/vendas/{id}/desconto` | 200 + venda | 400, 404, 409, 422 |
+| PUT | `/api/vendas/{id}/forma-pagamento` | 200 + venda | 400, 404, 409 |
+
+Exemplos:
+
+```json
+// PUT /api/vendas/1/desconto
+{ "valor": 15.50 }
+
+// PUT /api/vendas/1/forma-pagamento
+{ "formaPagamento": "PIX" }
+```
+
+### Decisoes
+
+- **Ambiguidade 2 resolvida**: desconto e **valor absoluto em reais**, nao
+  percentual (o nome `aplicarDesconto(valor)` do planejamento sugere absoluto).
+- Desconto nao pode ser negativo nem **exceder o subtotal atual**; o valor e
+  arredondado para 2 casas (HALF_UP).
+- Desconto e forma de pagamento so podem ser definidos com a venda `EM_ABERTO`;
+  depois de finalizada/cancelada a API devolve **409**.
+- A validacao do desconto usa o subtotal interno; `calcularSubtotal` e
+  `calcularValorFinal` publicos entram na B6.
 
