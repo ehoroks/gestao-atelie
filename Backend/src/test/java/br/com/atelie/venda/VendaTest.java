@@ -291,6 +291,28 @@ class VendaTest {
                 .hasMessageContaining("motivo");
     }
 
+    @Test
+    void comprovanteListaItensTotaisPagamentoEEstado() {
+        String comprovante = vendaConcluida().gerarComprovante();
+
+        assertThat(comprovante)
+                .contains("COMPROVANTE DE VENDA", "Produto #10", "Subtotal:",
+                        "Desconto:", "VALOR FINAL:", "Forma de pagamento: PIX", "Situacao: CONCLUIDA")
+                .contains("50,00");
+    }
+
+    @Test
+    void comprovanteDeVendaCanceladaIncluiDataEMotivo() {
+        Venda venda = vendaConcluida();
+        venda.cancelar(LocalDateTime.of(2026, 11, 6, 10, 30), "cliente desistiu");
+
+        String comprovante = venda.gerarComprovante();
+
+        assertThat(comprovante)
+                .contains("Situacao: CANCELADA", "Cancelada em: 06/11/2026 10:30:00",
+                        "Motivo do cancelamento: cliente desistiu");
+    }
+
     private static Venda vendaConcluida() {
         Venda venda = new Venda(null);
         venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("50.00"));

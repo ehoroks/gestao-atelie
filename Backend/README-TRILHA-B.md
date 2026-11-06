@@ -371,4 +371,30 @@ Corpo:
 - O estorno nao exige que o produto continue ativo; ele apenas devolve o saldo.
 
 O teste de integracao cobre o ciclo finalizar/cancelar, a reposicao do saldo e a
-protecao contra estorno duplicado. O proximo passo e B9 (comprovante da venda).
+protecao contra estorno duplicado.
+
+---
+
+## B9 — Comprovante textual da venda (entregue nesta branch)
+
+Gera um comprovante em texto simples a partir dos dados congelados da venda.
+
+| Camada | Arquivo |
+|---|---|
+| Dominio | `venda/Venda.java` (`gerarComprovante`) |
+| Caso de uso | `aplicacao/ServicoVenda.java` |
+| API REST | `venda/VendaController.java` |
+
+### Endpoint
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| GET | `/api/vendas/{id}/comprovante` | 200 + `text/plain` | 404 |
+
+O texto contem identificador e data da venda, cliente ou venda de balcao,
+situacao, itens com produto/quantidade/preco unitario/subtotal, subtotal,
+desconto, valor final e forma de pagamento. Para vendas canceladas, tambem
+mostra data e motivo do cancelamento. Valores monetarios usam formato brasileiro.
+
+O endpoint pode ser consultado em qualquer situacao: vendas em aberto aparecem
+com o estado atual e a forma de pagamento indicada como nao definida.
