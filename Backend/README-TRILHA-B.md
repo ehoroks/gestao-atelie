@@ -398,3 +398,22 @@ mostra data e motivo do cancelamento. Valores monetarios usam formato brasileiro
 
 O endpoint pode ser consultado em qualquer situacao: vendas em aberto aparecem
 com o estado atual e a forma de pagamento indicada como nao definida.
+
+---
+
+## B10 — Testes das regras críticas de venda (entregue nesta branch)
+
+Amplia a verificacao das regras de venda vazia, desconto acima do subtotal e
+repeticao de finalizacao/cancelamento.
+
+| Suite | Arquivo |
+|---|---|
+| Dominio | `src/test/java/br/com/atelie/venda/VendaTest.java` |
+| API e estoque | `src/test/java/br/com/atelie/venda/VendaControllerIntegrationTest.java` |
+
+Os testes de integracao garantem que venda vazia nao muda de estado, desconto
+maior que o subtotal nao e aplicado, finalizar novamente nao baixa estoque outra
+vez e cancelar novamente nao estorna estoque outra vez. Os testes de dominio
+tambem cobrem as respectivas regras e transicoes invalidas.
+
+Os proximos itens da Trilha B sao B11 (historicos) e B12 (relatorios).
