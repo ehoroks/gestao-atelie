@@ -416,4 +416,30 @@ maior que o subtotal nao e aplicado, finalizar novamente nao baixa estoque outra
 vez e cancelar novamente nao estorna estoque outra vez. Os testes de dominio
 tambem cobrem as respectivas regras e transicoes invalidas.
 
-Os proximos itens da Trilha B sao B11 (historicos) e B12 (relatorios).
+---
+
+## B11 — Histórico de vendas e compras de clientes (entregue nesta branch)
+
+Disponibiliza consultas dedicadas para o historico completo de vendas e para as
+vendas associadas a um cliente.
+
+| Camada | Arquivo |
+|---|---|
+| Persistencia | `venda/VendaRepository.java` |
+| Caso de uso | `aplicacao/ServicoVenda.java` |
+| API REST | `venda/VendaController.java` |
+
+### Endpoints
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| GET | `/api/vendas/historico` | 200 + vendas | — |
+| GET | `/api/vendas/historico/clientes/{clienteId}` | 200 + vendas do cliente | 404 |
+
+Os resultados incluem itens e totais e vêm da venda mais recente para a mais
+antiga. O historico geral inclui todos os estados (aberta, concluida ou
+cancelada); cada resposta informa a situacao. O historico de compras filtra pelo
+`clienteId`, exclui vendas de balcao sem cliente e retorna 404 quando o cliente
+nao existe.
+
+O proximo item da Trilha B e B12 (relatorios de vendas).

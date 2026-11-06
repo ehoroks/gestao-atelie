@@ -2,6 +2,8 @@ package br.com.atelie.venda;
 
 import br.com.atelie.catalogo.Produto;
 import br.com.atelie.catalogo.ProdutoRepository;
+import br.com.atelie.cliente.Cliente;
+import br.com.atelie.cliente.ClienteRepository;
 import br.com.atelie.estoque.UnidadeMedida;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -38,6 +41,9 @@ class VendaControllerIntegrationTest {
 
     @Autowired
     private ProdutoRepository produtos;
+
+    @Autowired
+    private ClienteRepository clientes;
 
     @Test
     void abreVendaSemClienteEAdicionaItem() throws Exception {
@@ -72,6 +78,46 @@ class VendaControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.situacao").value("EM_ABERTO"))
                 .andExpect(jsonPath("$.itens.length()").value(0));
+    }
+
+    @Test
+    void historicoDeVendasListaAsMaisRecentesPrimeiroComItens() throws Exception {
+        Long vendaAntiga = abrirVenda();
+        adicionarItem(vendaAntiga, 10, "1", "12.50");
+        Long vendaRecente = abrirVenda();
+
+        String resposta = mockMvc.perform(get("/api/vendas/historico"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].itens").isArray())
+                .andExpect(jsonPath("$[1].itens.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+
+        List<?> ids = JsonPath.read(resposta, "$[*].id");
+        assertThat(((Number) ids.get(0)).longValue()).isEqualTo(vendaRecente);
+        assertThat(((Number) ids.get(1)).longValue()).isEqualTo(vendaAntiga);
+    }
+
+    @Test
+    void historicoDeComprasRetornaSomenteVendasAssociadasAoCliente() throws Exception {
+        Cliente cliente = clientes.saveAndFlush(
+                new Cliente("Ana Compradora", "85999990000", "ana@exemplo.com"));
+        Long vendaDoCliente = abrirVenda(cliente.getId());
+        Long vendaDeBalcao = abrirVenda();
+
+        mockMvc.perform(get("/api/vendas/historico/clientes/{clienteId}", cliente.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(vendaDoCliente.intValue()))
+                .andExpect(jsonPath("$[0].clienteId").value(cliente.getId().intValue()))
+                .andExpect(jsonPath("$[0].situacao").value("EM_ABERTO"));
+
+        assertThat(vendaDeBalcao).isNotEqualTo(vendaDoCliente);
+    }
+
+    @Test
+    void historicoDeComprasDeClienteInexistenteRetorna404() throws Exception {
+        mockMvc.perform(get("/api/vendas/historico/clientes/999999"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -306,6 +352,14 @@ class VendaControllerIntegrationTest {
 
     private Long abrirVenda() throws Exception {
         return idDe(mockMvc.perform(post("/api/vendas"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    private Long abrirVenda(Long clienteId) throws Exception {
+        return idDe(mockMvc.perform(post("/api/vendas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clienteId\":%d}".formatted(clienteId)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
     }
