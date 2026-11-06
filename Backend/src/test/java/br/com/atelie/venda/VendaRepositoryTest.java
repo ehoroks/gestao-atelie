@@ -49,4 +49,25 @@ class VendaRepositoryTest {
 
         assertThat(itens.findById(itemId)).isEmpty();
     }
+
+    @Test
+    void valorFinalTemPisoEmZeroQuandoItensRemovidosAbaixoDoDesconto() {
+        Venda venda = new Venda(null);
+        ItemVenda item1 = venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("100.00"));
+        venda.adicionarItem(20L, BigDecimal.ONE, new BigDecimal("50.00"));
+        Venda salva = vendas.saveAndFlush(venda);
+
+        // Desconto igual ao subtotal (150.00) e permitido no momento da aplicacao.
+        salva.aplicarDesconto(new BigDecimal("150.00"));
+        vendas.saveAndFlush(salva);
+
+        // Depois remove um item: subtotal cai para 50.00, abaixo do desconto.
+        salva.removerItem(item1.getId());
+        vendas.saveAndFlush(salva);
+        entityManager.clear();
+
+        Venda encontrada = vendas.findById(salva.getId()).orElseThrow();
+        assertThat(encontrada.calcularSubtotal()).isEqualByComparingTo("50.00");
+        assertThat(encontrada.calcularValorFinal()).isEqualByComparingTo("0.00");
+    }
 }

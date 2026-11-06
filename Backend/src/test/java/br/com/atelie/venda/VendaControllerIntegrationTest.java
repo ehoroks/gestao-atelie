@@ -186,6 +186,25 @@ class VendaControllerIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+    @Test
+    void expoeSubtotalEValorFinalNaResposta() throws Exception {
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, 10, "2", "50.00"); // subtotal = 100.00
+
+        mockMvc.perform(put("/api/vendas/{id}/desconto", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"valor":15.50}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/vendas/{id}", vendaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subtotal").value(100.00))
+                .andExpect(jsonPath("$.desconto").value(15.50))
+                .andExpect(jsonPath("$.valorFinal").value(84.50));
+    }
+
     private Long abrirVenda() throws Exception {
         return idDe(mockMvc.perform(post("/api/vendas"))
                 .andExpect(status().isCreated())

@@ -13,6 +13,8 @@ public record VendaResponse(
         Long clienteId,
         SituacaoVenda situacao,
         BigDecimal desconto,
+        BigDecimal subtotal,
+        BigDecimal valorFinal,
         FormaPagamento formaPagamento,
         LocalDateTime criadoEm,
         List<ItemVendaResponse> itens
@@ -27,6 +29,8 @@ public record VendaResponse(
                 venda.getClienteId(),
                 venda.getSituacao(),
                 venda.getDesconto(),
+                venda.calcularSubtotal(),
+                venda.calcularValorFinal(),
                 venda.getFormaPagamento(),
                 venda.getCriadoEm(),
                 itens);

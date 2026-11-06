@@ -108,7 +108,7 @@ public class Venda {
             throw new RegraNegocioException("desconto nao pode ser negativo");
         }
         BigDecimal normalizado = valor.setScale(2, RoundingMode.HALF_UP);
-        if (normalizado.compareTo(subtotalAtual()) > 0) {
+        if (normalizado.compareTo(calcularSubtotal()) > 0) {
             throw new RegraNegocioException("desconto nao pode exceder o subtotal da venda");
         }
         this.desconto = normalizado;
@@ -127,11 +127,25 @@ public class Venda {
         }
     }
 
-    /** Interno por enquanto; a B6 expoe `calcularSubtotal`/`calcularValorFinal`. */
-    private BigDecimal subtotalAtual() {
+    // --- calculos (B6) ---
+
+    /** Soma dos subtotais dos itens (preco congelado x quantidade). */
+    public BigDecimal calcularSubtotal() {
         return itens.stream()
                 .map(ItemVenda::calcularSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * B6: subtotal - desconto, com piso em zero.
+     *
+     * O piso e necessario porque o desconto e validado no momento da aplicacao,
+     * mas itens podem ser removidos depois (venda continua em aberto), deixando o
+     * subtotal menor que o desconto ja registrado.
+     */
+    public BigDecimal calcularValorFinal() {
+        BigDecimal valorFinal = calcularSubtotal().subtract(desconto);
+        return valorFinal.signum() < 0 ? BigDecimal.ZERO : valorFinal;
     }
 
     /**

@@ -77,8 +77,8 @@ A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B6**: `calcularSubtotal` e `calcularValorFinal` (subtotal - desconto, piso
-   em zero).
+1. **B7**: `finalizar()` — exigir itens >= 1 e forma de pagamento definida;
+   integrar baixa de estoque (I1, Trilha A).
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
@@ -255,4 +255,38 @@ Exemplos:
   depois de finalizada/cancelada a API devolve **409**.
 - A validacao do desconto usa o subtotal interno; `calcularSubtotal` e
   `calcularValorFinal` publicos entram na B6.
+
+---
+
+## B6 — Subtotal e valor final (entregue nesta branch)
+
+Torna publicos os calculos que a B5 usava internamente e os expoe na API.
+
+| Camada | Arquivo |
+|---|---|
+| Dominio | `venda/Venda.java` (`calcularSubtotal`, `calcularValorFinal`) |
+| API REST | `venda/dto/VendaResponse.java` (`subtotal`, `valorFinal`) |
+
+### Regras
+
+- `calcularSubtotal()` = soma dos subtotais dos itens (preco congelado x
+  quantidade), com arredondamento de 2 casas por item (HALF_UP).
+- `calcularValorFinal()` = `subtotal - desconto`, com **piso em zero**.
+- O piso existe porque o desconto e validado no momento da aplicacao, mas itens
+  podem ser removidos depois (venda segue `EM_ABERTO`), deixando o subtotal
+  menor que o desconto ja registrado.
+
+### Exemplo de resposta (`GET /api/vendas/{id}`)
+
+```json
+{
+  "id": 1,
+  "situacao": "EM_ABERTO",
+  "desconto": 15.50,
+  "subtotal": 100.00,
+  "valorFinal": 84.50,
+  "formaPagamento": "PIX",
+  "itens": [ ... ]
+}
+```
 
