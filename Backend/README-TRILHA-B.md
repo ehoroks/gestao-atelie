@@ -77,10 +77,52 @@ A faixa `V2xx` segue a convencao D3 (A=V1xx, B=V2xx, C=V3xx, D=V4xx).
 
 ### Limites / proximos passos
 
-1. **B2**: `Cliente` seguindo o mesmo template (entidade + repository + service +
-   controller + testes + migration `V201`).
+1. **B3**: `Venda`/`ItemVenda` com `precoUnitario` congelado, seguindo o mesmo
+   template (entidade + repository + service + controller + testes + migration).
 2. **Spring Security completo**: autenticacao stateless com JWT e autorizacao por
    `PerfilUsuario`, coordenada com a Trilha D.
 3. **Testcontainers**: substituir H2 quando o Docker estiver disponivel.
 4. **Relacionamentos**: `Usuario` ↔ `Cliente` (ambiguidade 1 do planejamento)
    continua em aberto e deve ser resolvido com a equipe.
+
+---
+
+## B2 — Cliente + CRUD + busca (entregue nesta branch)
+
+Mesmo padrao arquitetural da B1:
+
+| Camada | Arquivo |
+|---|---|
+| Entidade JPA | `cliente/Cliente.java` |
+| Persistencia | `cliente/ClienteRepository.java` |
+| Caso de uso | `aplicacao/ServicoCliente.java` |
+| API REST | `cliente/ClienteController.java` |
+| DTOs | `cliente/dto/ClienteRequest.java`, `ClienteResponse.java` |
+| Migration | `resources/db/migration/V201__cria_clientes.sql` |
+
+### Endpoints
+
+| Metodo | Rota | Sucesso | Erros |
+|---|---|---|---|
+| POST | `/api/clientes` | 201 + cliente | 400, 422 |
+| GET | `/api/clientes?termo=...` | 200 + lista | — |
+| GET | `/api/clientes/{id}` | 200 | 404 |
+| PUT | `/api/clientes/{id}` | 200 + cliente | 400, 404, 422 |
+| DELETE | `/api/clientes/{id}` | 204 | 404 |
+
+`termo` busca por trecho do **nome** (case-insensitive) ou por trecho dos
+**digitos do telefone**. Sem `termo`, lista todos ordenados por nome.
+
+### Decisoes
+
+- **Telefone** normalizado para apenas digitos (10 ou 11) antes de persistir;
+  `(11) 98765-4321` vira `11987654321`.
+- **Email opcional**: em branco vira `null`; quando informado, e normalizado para
+  minusculas e validado.
+- **Sem unicidade de email/telefone**: nao ha requisito; familias podem
+  compartilhar telefone.
+- **Usuario ↔ Cliente**: associacao ainda nao implementada (ambiguidade 1).
+- **Exclusao**: `DELETE` remove o registro. Quando `Venda` existir, sera preciso
+  decidir entre bloquear exclusao de cliente com vendas (soft delete) ou usar
+  `ON DELETE RESTRICT`.
+
