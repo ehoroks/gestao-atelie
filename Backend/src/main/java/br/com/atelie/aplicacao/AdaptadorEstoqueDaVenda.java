@@ -32,6 +32,17 @@ public class AdaptadorEstoqueDaVenda implements EstoqueDaVenda {
     @Override
     @Transactional
     public void baixarItensDaVenda(Venda venda) {
+        estoque.baixar(montarLinhas(venda, true), "venda %s".formatted(venda.getId()));
+    }
+
+    @Override
+    @Transactional
+    public void estornarItensDaVenda(Venda venda) {
+        estoque.estornar(montarLinhas(venda, false),
+                "cancelamento da venda %s".formatted(venda.getId()));
+    }
+
+    private List<ServicoEstoque.Linha> montarLinhas(Venda venda, boolean exigirProdutoAtivo) {
         Objects.requireNonNull(venda, "venda obrigatoria");
         Map<Long, BigDecimal> quantidadesPorProduto = new TreeMap<>();
         for (ItemVenda item : venda.getItens()) {
@@ -42,13 +53,12 @@ public class AdaptadorEstoqueDaVenda implements EstoqueDaVenda {
         for (Map.Entry<Long, BigDecimal> pedido : quantidadesPorProduto.entrySet()) {
             Produto produto = produtos.buscarPorIdParaAtualizacao(pedido.getKey())
                     .orElseThrow(() -> new RecursoNaoEncontradoException("Produto", pedido.getKey()));
-            if (!produto.isAtivo()) {
+            if (exigirProdutoAtivo && !produto.isAtivo()) {
                 throw new RegraNegocioException(
                         "produto %d esta desativado e nao pode ser vendido".formatted(pedido.getKey()));
             }
             linhas.add(new ServicoEstoque.Linha(produto, pedido.getValue()));
         }
-
-        estoque.baixar(linhas, "venda %s".formatted(venda.getId()));
+        return List.copyOf(linhas);
     }
 }

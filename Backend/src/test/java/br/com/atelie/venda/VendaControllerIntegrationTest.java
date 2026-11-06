@@ -1,5 +1,8 @@
 package br.com.atelie.venda;
 
+import br.com.atelie.catalogo.Produto;
+import br.com.atelie.catalogo.ProdutoRepository;
+import br.com.atelie.estoque.UnidadeMedida;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +13,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Fatia vertical B4: abrir venda, adicionar/remover itens e bloqueio apos finalizar. */
+/** Fatia vertical de vendas: itens, estados e integracao de estoque. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -29,6 +35,9 @@ class VendaControllerIntegrationTest {
 
     @Autowired
     private VendaRepository vendas;
+
+    @Autowired
+    private ProdutoRepository produtos;
 
     @Test
     void abreVendaSemClienteEAdicionaItem() throws Exception {
@@ -205,6 +214,42 @@ class VendaControllerIntegrationTest {
                 .andExpect(jsonPath("$.valorFinal").value(84.50));
     }
 
+    @Test
+    void cancelaVendaConcluidaEEstornaEstoqueUmaUnicaVez() throws Exception {
+        Long produtoId = criarProdutoComEstoque("5");
+        Long vendaId = abrirVenda();
+        adicionarItem(vendaId, produtoId, "2", "25.00");
+
+        mockMvc.perform(put("/api/vendas/{id}/forma-pagamento", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"formaPagamento":"PIX"}
+                                """))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/vendas/{id}/finalizar", vendaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacao").value("CONCLUIDA"));
+        assertThatSaldo(produtoId, "3.000");
+
+        String pedidoCancelamento = """
+                {"data":"2026-11-06T10:30:00","motivo":"cliente desistiu"}
+                """;
+        mockMvc.perform(post("/api/vendas/{id}/cancelar", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoCancelamento))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacao").value("CANCELADA"))
+                .andExpect(jsonPath("$.canceladaEm").value("2026-11-06T10:30:00"))
+                .andExpect(jsonPath("$.motivoCancelamento").value("cliente desistiu"));
+        assertThatSaldo(produtoId, "5.000");
+
+        mockMvc.perform(post("/api/vendas/{id}/cancelar", vendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(pedidoCancelamento))
+                .andExpect(status().isConflict());
+        assertThatSaldo(produtoId, "5.000");
+    }
+
     private Long abrirVenda() throws Exception {
         return idDe(mockMvc.perform(post("/api/vendas"))
                 .andExpect(status().isCreated())
@@ -221,6 +266,18 @@ class VendaControllerIntegrationTest {
                         .content(corpo))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
+    }
+
+    private Long criarProdutoComEstoque(String quantidade) {
+        Produto produto = new Produto("Produto de teste", UnidadeMedida.UN,
+                BigDecimal.ZERO, null, new BigDecimal("25.00"));
+        produto.registrarEntrada(new BigDecimal(quantidade));
+        return produtos.saveAndFlush(produto).getId();
+    }
+
+    private void assertThatSaldo(Long produtoId, String saldo) {
+        assertThat(produtos.findById(produtoId).orElseThrow().getQuantidade())
+                .isEqualByComparingTo(saldo);
     }
 
     private static Long idDe(String json) {

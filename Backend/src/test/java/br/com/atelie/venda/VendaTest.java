@@ -6,6 +6,7 @@ import br.com.atelie.comum.TransicaoInvalidaException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -248,5 +249,53 @@ class VendaTest {
 
         assertThatThrownBy(venda::finalizar)
                 .isInstanceOf(TransicaoInvalidaException.class);
+    }
+
+    // --- B8: cancelar ---
+
+    @Test
+    void cancelaVendaConcluidaERegistraDataEMotivo() {
+        Venda venda = vendaConcluida();
+        LocalDateTime data = LocalDateTime.of(2026, 11, 6, 10, 30);
+
+        venda.cancelar(data, "cliente desistiu");
+
+        assertThat(venda.getSituacao()).isEqualTo(SituacaoVenda.CANCELADA);
+        assertThat(venda.getCanceladaEm()).isEqualTo(data);
+        assertThat(venda.getMotivoCancelamento()).isEqualTo("cliente desistiu");
+    }
+
+    @Test
+    void naoCancelaVendaEmAberto() {
+        Venda venda = new Venda(null);
+
+        assertThatThrownBy(() -> venda.cancelar(LocalDateTime.now(), "motivo"))
+                .isInstanceOf(TransicaoInvalidaException.class);
+    }
+
+    @Test
+    void naoCancelaVendaDuasVezes() {
+        Venda venda = vendaConcluida();
+        venda.cancelar(LocalDateTime.now(), "primeiro cancelamento");
+
+        assertThatThrownBy(() -> venda.cancelar(LocalDateTime.now(), "segundo cancelamento"))
+                .isInstanceOf(TransicaoInvalidaException.class);
+    }
+
+    @Test
+    void motivoDoCancelamentoEhObrigatorio() {
+        Venda venda = vendaConcluida();
+
+        assertThatThrownBy(() -> venda.cancelar(LocalDateTime.now(), "  "))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("motivo");
+    }
+
+    private static Venda vendaConcluida() {
+        Venda venda = new Venda(null);
+        venda.adicionarItem(10L, BigDecimal.ONE, new BigDecimal("50.00"));
+        venda.definirFormaPagamento(FormaPagamento.PIX);
+        venda.finalizar();
+        return venda;
     }
 }

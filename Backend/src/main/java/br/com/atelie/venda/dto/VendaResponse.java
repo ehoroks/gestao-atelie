@@ -17,6 +17,8 @@ public record VendaResponse(
         BigDecimal valorFinal,
         FormaPagamento formaPagamento,
         LocalDateTime criadoEm,
+        LocalDateTime canceladaEm,
+        String motivoCancelamento,
         List<ItemVendaResponse> itens
 ) {
 
@@ -33,6 +35,8 @@ public record VendaResponse(
                 venda.calcularValorFinal(),
                 venda.getFormaPagamento(),
                 venda.getCriadoEm(),
+                venda.getCanceladaEm(),
+                venda.getMotivoCancelamento(),
                 itens);
     }
 }

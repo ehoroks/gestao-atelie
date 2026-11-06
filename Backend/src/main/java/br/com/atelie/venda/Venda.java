@@ -59,6 +59,12 @@ public class Venda {
     @Column(name = "criado_em", nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 
+    @Column(name = "cancelada_em")
+    private LocalDateTime canceladaEm;
+
+    @Column(name = "motivo_cancelamento", length = 500)
+    private String motivoCancelamento;
+
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemVenda> itens = new ArrayList<>();
 
@@ -148,6 +154,30 @@ public class Venda {
         }
     }
 
+    /** B8: registra o cancelamento depois do estorno coordenado pelo servico. */
+    public void cancelar(LocalDateTime data, String motivo) {
+        validarCancelamento(data, motivo);
+        alterarSituacao(SituacaoVenda.CANCELADA);
+        this.canceladaEm = data;
+        this.motivoCancelamento = motivo.trim();
+    }
+
+    /** Valida o cancelamento sem mudar o agregado, antes de estornar o estoque. */
+    public void validarCancelamento(LocalDateTime data, String motivo) {
+        if (situacao != SituacaoVenda.CONCLUIDA) {
+            throw new TransicaoInvalidaException(situacao, SituacaoVenda.CANCELADA);
+        }
+        if (data == null) {
+            throw new RegraNegocioException("data do cancelamento e obrigatoria");
+        }
+        if (motivo == null || motivo.isBlank()) {
+            throw new RegraNegocioException("motivo do cancelamento e obrigatorio");
+        }
+        if (motivo.trim().length() > 500) {
+            throw new RegraNegocioException("motivo do cancelamento deve ter no maximo 500 caracteres");
+        }
+    }
+
     private void exigirVendaEmAberto() {
         if (!situacao.permiteEdicaoDeItens()) {
             throw new VendaNaoEditavelException(situacao);
@@ -176,8 +206,8 @@ public class Venda {
     }
 
     /**
-     * Transicao de estado interna. As operacoes publicas `finalizar()` e
-     * `cancelar(...)` entram na B7/B8; aqui a maquina de estados ja e respeitada.
+     * Transicao de estado interna; as operacoes publicas validam os dados e
+     * coordenam as integracoes antes de chegar aqui.
      */
     void alterarSituacao(SituacaoVenda destino) {
         if (!situacao.podeTransicionarPara(destino)) {
@@ -194,6 +224,8 @@ public class Venda {
     public BigDecimal getDesconto() { return desconto; }
     public FormaPagamento getFormaPagamento() { return formaPagamento; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public LocalDateTime getCanceladaEm() { return canceladaEm; }
+    public String getMotivoCancelamento() { return motivoCancelamento; }
 
     public List<ItemVenda> getItens() {
         return Collections.unmodifiableList(itens);
