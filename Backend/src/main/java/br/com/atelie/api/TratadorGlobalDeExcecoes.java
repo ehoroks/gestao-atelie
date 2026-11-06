@@ -66,12 +66,12 @@ public class TratadorGlobalDeExcecoes {
 
     @ExceptionHandler(RegraNegocioException.class)
     public ResponseEntity<ErroResposta> tratarRegra(RegraNegocioException ex) {
-        return resposta(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        return resposta(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
     }
 
     @ExceptionHandler(DominioException.class)
     public ResponseEntity<ErroResposta> tratarDominio(DominioException ex) {
-        return resposta(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        return resposta(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
     }
 
     private static ResponseEntity<ErroResposta> resposta(HttpStatus status, String mensagem) {
