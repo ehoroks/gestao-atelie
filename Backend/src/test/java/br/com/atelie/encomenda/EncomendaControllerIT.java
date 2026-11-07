@@ -143,6 +143,55 @@ class EncomendaControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.insumos[0].quantidade").value(2));
     }
 
+    @Test
+    void cancelarAposProducaoDevolveInsumoAoEstoque() throws Exception {
+        Cliente cliente = criarCliente();
+        Produto produto = criarProduto();
+        Insumo insumo = criarInsumo("Tecido", "10");
+        jdbc.execute("DELETE FROM movimentacoes_estoque");
+        Long encomendaId = criarEncomenda(cliente, produto, insumo, "3");
+
+        mockMvc.perform(patch("/api/encomendas/{id}/situacao", encomendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"situacao\":\"EM_PRODUCAO\"}"))
+                .andExpect(status().isOk());
+        assertThat(insumos.findById(insumo.getId()).orElseThrow().getQuantidade())
+                .isEqualByComparingTo("7.000");
+
+        mockMvc.perform(patch("/api/encomendas/{id}/situacao", encomendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"situacao\":\"CANCELADA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacao").value("CANCELADA"))
+                .andExpect(jsonPath("$.insumosConsumidos").value(false));
+
+        assertThat(insumos.findById(insumo.getId()).orElseThrow().getQuantidade())
+                .isEqualByComparingTo("10.000");
+        var movimentos = movimentacoes.listarPorItemId(insumo.getId());
+        assertThat(movimentos).hasSize(2);
+        assertThat(movimentos.get(1).getTipo()).isEqualTo(br.com.atelie.estoque.TipoMovimentacao.ENTRADA);
+        assertThat(movimentos.get(1).getSaldoResultante()).isEqualByComparingTo("10.000");
+    }
+
+    @Test
+    void cancelarAntesDaProducaoNaoMexeNoEstoque() throws Exception {
+        Cliente cliente = criarCliente();
+        Produto produto = criarProduto();
+        Insumo insumo = criarInsumo("Tecido", "10");
+        jdbc.execute("DELETE FROM movimentacoes_estoque");
+        Long encomendaId = criarEncomenda(cliente, produto, insumo, "3");
+
+        mockMvc.perform(patch("/api/encomendas/{id}/situacao", encomendaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"situacao\":\"CANCELADA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.insumosConsumidos").value(false));
+
+        assertThat(insumos.findById(insumo.getId()).orElseThrow().getQuantidade())
+                .isEqualByComparingTo("10.000");
+        assertThat(movimentacoes.count()).isZero();
+    }
+
     private Cliente criarCliente() {
         return clientes.saveAndFlush(new Cliente("Cliente D", "11999990000", null));
     }

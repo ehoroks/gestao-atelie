@@ -1,0 +1,30 @@
+# D1 - banco local para desenvolvimento.
+# Le as mesmas variaveis do .env que a aplicacao usa (o Compose carrega o .env
+# deste diretorio automaticamente), para nao haver duas fontes de verdade.
+#
+#   cp .env.example .env   # e ajuste DB_PASSWORD
+#   docker compose up -d
+#   mvn spring-boot:run
+#
+# Os testes *IT NAO usam este compose: o Testcontainers sobe o proprio
+# PostgreSQL, descartavel, numa porta aleatoria.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: atelie-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cirinha_atelie}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env (veja .env.example)}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - atelie-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  atelie-pgdata:

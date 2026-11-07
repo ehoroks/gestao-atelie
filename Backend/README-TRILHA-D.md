@@ -9,11 +9,12 @@ aplicação Maven.
 
 | Atividade | Estado nesta integração |
 |---|---|
+| D1 — projeto base | `pom.xml`, `application.yml` por perfil, Flyway e `docker-compose.yml` para o PostgreSQL local. |
 | D2 — tratamento global de erros | Integrado ao `TratadorGlobalDeExcecoes` e ao contrato `ErroResposta`; conflitos de versão retornam 409. |
 | D3 — migrations | Reutiliza as migrations A/B; D cria encomendas na faixa V4xx. |
 | D4 — clientes | Reutiliza Cliente/CRUD da B2; exclusão de cliente com encomendas é bloqueada. |
 | D5 — persistência | `Encomenda` e `EncomendaInsumo` usam JPA, versão otimista e máquina de estados. |
-| D6 — consumo de insumos | A entrada em `EM_PRODUCAO` baixa todos os insumos em uma transação e registra movimentos. |
+| D6 — consumo de insumos | A entrada em `EM_PRODUCAO` baixa todos os insumos em uma transação e registra movimentos. Cancelar depois da produção estorna o que já foi baixado. |
 | D7 — API | Endpoints REST de encomenda com DTOs validados. |
 | D8 — integração | Testes `*IT` exercitam transições, rollback de estoque e migrations em PostgreSQL real. |
 | D9 — infraestrutura de teste | `IntegrationTestBase`, PostgreSQL Testcontainers e builders compartilhados. |
@@ -40,6 +41,21 @@ aplicação Maven.
 - Exceções continuam retornando o formato existente `ErroResposta`. Conflitos
   otimistas são mapeados para HTTP 409.
 
+## Pré-requisito dos testes
+
+`mvn test` roda os testes unitários e os de H2 — não precisa de Docker.
+
+`mvn verify` roda também os `*IT`, que sobem um PostgreSQL real via Testcontainers
+e **exigem um Docker em execução**. Sem Docker, a subida do container falha com a
+mensagem explicando o que fazer. Para pular os `*IT` sem rodar o Docker:
+
+```
+mvn verify -DskipITs
+```
+
+O `docker-compose.yml` é para rodar a aplicação localmente contra um PostgreSQL;
+os testes não o utilizam, o Testcontainers cria o próprio banco.
+
 ## Banco e testes
 
 - `V101__estoque_insumos_e_movimentacoes.sql` migra os produtos existentes para
@@ -50,6 +66,7 @@ aplicação Maven.
 - `mvn test` executa os testes unitários e testes locais H2.
 - `mvn verify` também executa os testes `*IT` usando PostgreSQL Testcontainers;
   requer Docker disponível no ambiente.
+- As classes `*IT` levam `@Tag("integration")`, para permitir filtrar por grupo.
 
 Os testes de integração herdam de `br.com.atelie.infra.teste.IntegrationTestBase`,
 que sobe um PostgreSQL por execução, aplica Flyway e limpa os dados antes de
