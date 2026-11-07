@@ -44,9 +44,15 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
+        <!--
+            Spring Boot 4 modularizou as auto-configuracoes: a de Flyway saiu do
+            spring-boot-autoconfigure e vive no seu proprio modulo. So flyway-core
+            no classpath nao basta - a biblioteca carrega, mas nada a executa, e o
+            Hibernate valida um schema vazio. O starter traz o modulo.
+        -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
