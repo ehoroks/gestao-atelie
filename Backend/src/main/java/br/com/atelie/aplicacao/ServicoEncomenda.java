@@ -117,8 +117,19 @@ public class ServicoEncomenda {
         encomenda.atualizarSituacao(destino);
 
         if (destino.consomeInsumos() && !encomenda.isInsumosConsumidos()) {
-            consumirInsumosPersistidos(encomenda);
+            List<ServicoEstoque.Linha> linhas = linhasBloqueadasDe(encomenda);
+            if (!linhas.isEmpty()) {
+                estoque.baixar(linhas, "consumo pela encomenda #" + encomenda.getId());
+            }
             encomenda.marcarInsumosConsumidos();
+        } else if (destino == SituacaoEncomenda.CANCELADA && encomenda.isInsumosConsumidos()) {
+            // D6: cancelar apos a producao devolve ao estoque o que ja foi baixado,
+            // igual ao cancelamento de venda da Trilha C.
+            List<ServicoEstoque.Linha> linhas = linhasBloqueadasDe(encomenda);
+            if (!linhas.isEmpty()) {
+                estoque.estornar(linhas, "estorno da encomenda cancelada #" + encomenda.getId());
+            }
+            encomenda.marcarInsumosDevolvidos();
         }
         return EncomendaResponse.de(encomenda);
     }
@@ -140,7 +151,12 @@ public class ServicoEncomenda {
         encomenda.atualizarSituacao(destino);
     }
 
-    private void consumirInsumosPersistidos(Encomenda encomenda) {
+    /**
+     * Carrega os insumos da encomenda com lock pessimista, sempre na mesma ordem
+     * de id, e agrupa linhas repetidas. A ordem fixa evita deadlock entre duas
+     * encomendas que compartilham insumos.
+     */
+    private List<ServicoEstoque.Linha> linhasBloqueadasDe(Encomenda encomenda) {
         Map<ItemEstoque, BigDecimal> agrupados = new IdentityHashMap<>();
         encomenda.getInsumos().stream()
                 .sorted(Comparator.comparing(item -> item.getInsumo().getId()))
@@ -153,9 +169,7 @@ public class ServicoEncomenda {
 
         List<ServicoEstoque.Linha> linhas = new ArrayList<>();
         agrupados.forEach((insumo, quantidade) -> linhas.add(new ServicoEstoque.Linha(insumo, quantidade)));
-        if (!linhas.isEmpty()) {
-            estoque.baixar(linhas, "consumo pela encomenda #" + encomenda.getId());
-        }
+        return linhas;
     }
 
     private static List<ServicoEstoque.Linha> montarLinhas(ComposicaoPreco composicao) {

@@ -186,10 +186,11 @@ class EncomendaIT extends IntegrationTestBase {
                 .map(item -> "{\"insumoId\":%d,\"quantidade\":%s}"
                         .formatted(item.insumoId(), item.quantidade().toPlainString()))
                 .toList());
-        String corpo = "{\"clienteId\":%d,\"produtoId\":%d,\"descricao\":\"Bolsa sob medida\","
-                + "\"valor\":200.00,\"dataPedido\":\"%s\",\"dataPrevistaEntrega\":\"%s\","
-                + "\"observacoes\":\"teste D\",\"insumos\":[%s]}".formatted(
-                        request.clienteId(), request.produtoId(), request.dataPedido(),
+        String corpo = """
+                {"clienteId":%d,"produtoId":%d,"descricao":"Bolsa sob medida",
+                 "valor":200.00,"dataPedido":"%s","dataPrevistaEntrega":"%s",
+                 "observacoes":"teste D","insumos":[%s]}
+                """.formatted(request.clienteId(), request.produtoId(), request.dataPedido(),
                         request.dataPrevistaEntrega(), linhasJson);
         String resposta = mockMvc.perform(post("/api/encomendas")
                         .contentType(MediaType.APPLICATION_JSON).content(corpo))

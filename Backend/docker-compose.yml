@@ -1,0 +1,26 @@
+# D1 - banco local para desenvolvimento.
+# Os testes *IT NAO usam este compose: o Testcontainers sobe o proprio
+# PostgreSQL. Este arquivo serve para rodar a aplicacao localmente.
+#
+#   docker compose up -d
+#   mvn spring-boot:run
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: atelie-postgres
+    environment:
+      POSTGRES_DB: cirinha_atelie
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - atelie-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cirinha_atelie"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  atelie-pgdata:

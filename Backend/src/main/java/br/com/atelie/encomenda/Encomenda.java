@@ -169,6 +169,17 @@ public class Encomenda {
         insumosConsumidos = true;
     }
 
+    /** Contrapartida de marcarInsumosConsumidos: usada no estorno do cancelamento. */
+    public void marcarInsumosDevolvidos() {
+        if (situacao != SituacaoEncomenda.CANCELADA) {
+            throw new RegraNegocioException("insumos so retornam ao estoque no cancelamento");
+        }
+        if (!insumosConsumidos) {
+            throw new RegraNegocioException("encomenda nao consumiu insumos");
+        }
+        insumosConsumidos = false;
+    }
+
     public boolean estaPendente() { return situacao.isPendente(); }
 
     public Long getId() { return id; }

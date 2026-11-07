@@ -1,6 +1,7 @@
 package br.com.atelie.infra.teste;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -18,6 +19,7 @@ import java.util.List;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("integration")
+@Tag("integration")
 public abstract class IntegrationTestBase {
 
     private static final PostgreSQLContainer POSTGRES =
@@ -27,7 +29,14 @@ public abstract class IntegrationTestBase {
                     .withPassword("test");
 
     static {
-        POSTGRES.start();
+        try {
+            POSTGRES.start();
+        } catch (RuntimeException falha) {
+            throw new IllegalStateException(
+                    "Os testes *IT precisam de um Docker em execucao: o Testcontainers sobe um "
+                            + "PostgreSQL real. Inicie o Docker e rode 'mvn verify' de novo, ou use "
+                            + "'mvn test' para rodar apenas os testes unitarios e os de H2.", falha);
+        }
     }
 
     @DynamicPropertySource
