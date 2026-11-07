@@ -9,6 +9,7 @@ import br.com.atelie.comum.TransicaoInvalidaException;
 import br.com.atelie.usuario.CredenciaisInvalidasException;
 import br.com.atelie.venda.VendaNaoEditavelException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -53,6 +54,12 @@ public class TratadorGlobalDeExcecoes {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErroResposta> tratarIntegridade(DataIntegrityViolationException ex) {
         return resposta(HttpStatus.CONFLICT, "Registro em conflito com dados ja existentes");
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErroResposta> tratarConcorrenciaOtimista(OptimisticLockingFailureException ex) {
+        return resposta(HttpStatus.CONFLICT,
+                "O registro foi alterado por outra operacao; recarregue e tente novamente");
     }
 
     @ExceptionHandler(EstoqueInsuficienteException.class)

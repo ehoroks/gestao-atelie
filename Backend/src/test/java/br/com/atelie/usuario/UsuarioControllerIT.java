@@ -1,28 +1,16 @@
 package br.com.atelie.usuario;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import br.com.atelie.infra.teste.IntegrationTestBase;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Fatia vertical B1: cadastro -> login ponta a ponta sobre H2 (perfil test). */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Transactional
-class UsuarioControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+/** Fatia vertical B1: cadastro -> login ponta a ponta sobre PostgreSQL Testcontainers. */
+class UsuarioControllerIT extends IntegrationTestBase {
 
     @Test
     void cadastrarEAutenticar() throws Exception {

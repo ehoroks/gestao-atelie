@@ -1,14 +1,20 @@
 package br.com.atelie.estoque;
 
 import br.com.atelie.comum.RegraNegocioException;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.Transient;
-import jakarta.persistence.EnumType;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -22,7 +28,10 @@ import java.util.Objects;
  * Nenhuma subclasse altera 'quantidade' diretamente: toda mudanca passa
  * pelos tres metodos abaixo, que sao os unicos que geram movimentacao.
  */
-@MappedSuperclass
+@Entity
+@Table(name = "item_estoque")
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "tipo", length = 20)
 public abstract class ItemEstoque {
 
     @Id
@@ -42,8 +51,9 @@ public abstract class ItemEstoque {
     @Column(name = "estoque_minimo", nullable = false, precision = 12, scale = 3)
     protected BigDecimal    estoqueMinimo = BigDecimal.ZERO;
 
-    @Transient
-    private final List<MovimentacaoEstoque> historico = new ArrayList<>();
+    @OneToMany(mappedBy = "item", cascade = CascadeType.PERSIST)
+    @OrderBy("data ASC, id ASC")
+    private List<MovimentacaoEstoque> historico = new ArrayList<>();
 
     protected ItemEstoque() {
         // exigido pelo mapeamento ORM (Sprint 1)
@@ -62,10 +72,14 @@ public abstract class ItemEstoque {
         registrarEntrada(quantidade, null);
     }
 
-    void registrarEntrada(BigDecimal quantidade, String motivo) {
+    public void registrarEntrada(BigDecimal quantidade, String motivo) {
+        registrarEntradaComMovimentacao(quantidade, motivo);
+    }
+
+    MovimentacaoEstoque registrarEntradaComMovimentacao(BigDecimal quantidade, String motivo) {
         validarQuantidadePositiva(quantidade);
         this.quantidade = this.quantidade.add(quantidade);
-        registrarMovimentacao(TipoMovimentacao.ENTRADA, quantidade, motivo);
+        return registrarMovimentacao(TipoMovimentacao.ENTRADA, quantidade, motivo);
     }
 
     /** Subtrai do saldo e registra SAIDA. Nunca deixa o saldo negativo. */
@@ -73,14 +87,18 @@ public abstract class ItemEstoque {
         registrarSaida(quantidade, null);
     }
 
-    void registrarSaida(BigDecimal quantidade, String motivo) {
+    public void registrarSaida(BigDecimal quantidade, String motivo) {
+        registrarSaidaComMovimentacao(quantidade, motivo);
+    }
+
+    MovimentacaoEstoque registrarSaidaComMovimentacao(BigDecimal quantidade, String motivo) {
         validarQuantidadePositiva(quantidade);
         if (!temEstoqueSuficiente(quantidade)) {
             throw new br.com.atelie.comum.EstoqueInsuficienteException(
                     nome, this.quantidade, quantidade);
         }
         this.quantidade = this.quantidade.subtract(quantidade);
-        registrarMovimentacao(TipoMovimentacao.SAIDA, quantidade, motivo);
+        return registrarMovimentacao(TipoMovimentacao.SAIDA, quantidade, motivo);
     }
 
     /** Sobrescreve o saldo e registra AJUSTE. Motivo obrigatorio. */

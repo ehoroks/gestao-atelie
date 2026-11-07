@@ -2,13 +2,8 @@ package br.com.atelie.cliente;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import br.com.atelie.infra.teste.IntegrationTestBase;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,15 +12,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Fatia vertical B2: CRUD e busca de Cliente ponta a ponta sobre H2. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Transactional
-class ClienteControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+/** Fatia vertical B2: CRUD e busca de Cliente com PostgreSQL Testcontainers. */
+class ClienteControllerIT extends IntegrationTestBase {
 
     @Test
     void cadastrarEBuscarPorNomeETelefone() throws Exception {

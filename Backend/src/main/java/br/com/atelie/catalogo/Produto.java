@@ -3,6 +3,7 @@ package br.com.atelie.catalogo;
 import br.com.atelie.estoque.ItemEstoque;
 import br.com.atelie.estoque.UnidadeMedida;
 import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
  */
 @Entity
 @Table(name = "produtos")
+@DiscriminatorValue("PRODUTO")
 public class Produto extends ItemEstoque {
 
     @ManyToOne(fetch = FetchType.LAZY)

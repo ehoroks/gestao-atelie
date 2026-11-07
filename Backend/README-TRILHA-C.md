@@ -4,13 +4,13 @@
 
 1. Instale **JDK 21** e **Maven 3.9+** (no IntelliJ IDEA ou no VSCode com extensoes Java).
 2. Abra a pasta `Backend` como projeto Maven.
-3. Rode `mvn clean verify` para executar os testes JUnit 5 (sem banco de dados).
+3. Rode `mvn test` para os testes unitarios/H2 sem Docker; `mvn verify` tambem executa os ITs PostgreSQL com Testcontainers e requer Docker.
 4. Para subir a aplicacao no Spring Boot, defina `DB_JDBC_URL`, `DB_USERNAME` e `DB_PASSWORD`, em variaveis de ambiente, e rode `mvn spring-boot:run`.
 5. No Supabase, obtenha a *connection string JDBC* do Postgres/pooler, incluindo `sslmode=require`, e mantenha as credenciais fora do Git.
 
 ## PostgreSQL / Supabase
 
-O arquivo `sql/trilha-c.sql` contem o **DDL preliminar** das tabelas proprias da Trilha C (`atelie.encomendas`, `atelie.composicoes_preco`, `atelie.itens_composicao`). A execucao e **manual e adiada** ate o alinhamento com A/B; nao ha chaves estrangeiras para entidades ainda ausentes nem repositorios JPA. O script usa um schema proprio, evitando exposicao automatica no schema `public` do Supabase.
+As classes de composicao de preco da Trilha C continuam como dominio Java; a persistencia e a API de encomendas foram integradas pela Trilha D usando as entidades existentes de Cliente, Produto e Insumo. A migration `V401__cria_encomendas.sql` cria encomendas e linhas de insumo no schema atual, usando chaves estrangeiras para as tabelas de A/B.
 
 ## Divisao e integracoes
 
@@ -18,22 +18,19 @@ O arquivo `sql/trilha-c.sql` contem o **DDL preliminar** das tabelas proprias da
 - **C2-C5**: `ItemComposicao` e `ComposicaoPreco` no pacote `catalogo` para acessar o metodo `Produto.definirPreco()` (visibilidade de pacote) sem modificar o contrato da Trilha A.
 - **C4 — Formula definida**: `preco = materiais * (1 + custos_indiretos/100) * (1 + margem/100)`. Aqui **margem** e um *markup sobre custo*, nao a margem percentual sobre preco de venda. Validar essa escolha com a cliente/professor.
 - **C6-C7**: `Encomenda` valida a maquina de estados ja definida em `SituacaoEncomenda`. `ENTREGUE` e `CANCELADA` sao terminais.
-- **C8/I2**: `ServicoEncomenda` chama `ServicoEstoque.baixar()` antes da mudanca de estado. A implementação real desse servico, que deve assegurar atomicidade, pertence a Trilha A.
+- **C8/I2**: `ServicoEncomenda` coordena `ServicoEstoque.baixar()` com a transicao persistida para `EM_PRODUCAO`; a operacao e atomica na mesma transacao.
 - **I3**: preco aplicado atraves de `ComposicaoPreco.aplicarComoPrecoDo()`, chamando o metodo de pacote `Produto.definirPreco()`.
-- **I4**: `Encomenda.clienteId` e a fronteira temporaria para a entidade `Cliente` da Trilha B, ainda ausente. Trocar pela associacao/JPA quando o contrato de `Cliente` estiver pronto, **sem duplicar a classe**.
+- **I4**: `Encomenda.cliente` usa a entidade JPA `Cliente` da Trilha B; nao ha uma segunda classe de cliente.
 - **I1/I5**: de responsabilidade da Trilha B, nao implementados nesta entrega.
 
 ## Limites desta etapa
 
-O `ServicoEncomenda` so vira bean Spring quando o perfil `estoque-integrado` e ativado e existe uma implementacao de `ServicoEstoque` da Trilha A. Ativar com `SPRING_PROFILES_ACTIVE=estoque-integrado` depois dessa integracao.
-
-O codigo atualmente na branch develop ainda nao possui mapeamentos JPA, controllers, migrations nem o servico de estoque concreto. O datasource para PostgreSQL/Supabase esta **configurado**, mas a persistencia SQL ainda depende da conclusao e integracao das Trilhas A e B. O Vue.js e a interface futura; a Trilha C e de backend e nao adiciona componentes de frontend.
+`ServicoEncomenda` e um bean ativo no backend Spring Boot e usa o servico de estoque persistente. A API e as migrations de encomenda estao documentadas em `README-TRILHA-D.md`. A associacao Produto-encomenda continua obrigatoria para preservar o contrato C atual; tornar Produto opcional permanece uma decisao de negocio pendente. O Vue.js e a interface futura; a Trilha C e de backend e nao adiciona componentes de frontend.
 
 A composicao descreve os materiais de **uma unidade de produto**; para encomendas de varias unidades, adicionar quantidade encomendada ao contrato de Encomenda e multiplicar as linhas antes da baixa.
 
 ## Cuidados de integracao
 
-- A prevalidacao da transicao ocorre antes da baixa. A baixa de varios insumos deve ser **tudo ou nada** no ServicoEstoque da Trilha A, e numa transacao de banco quando a persistencia existir.
-- `ServicoEncomenda` usa `@Transactional`, mas uma entidade alterada somente em memoria nao pode ser revertida por transacao JDBC. Quando as entidades JPA forem implementadas, carregar/salvar a encomenda dentro da mesma transacao do estoque.
+- `ServicoEncomenda` e `ServicoEstoque` usam `@Transactional`; uma falha de saldo reverte a mudanca de situacao e as baixas dentro do banco.
 - Cancelar uma encomenda apos iniciar producao **nao** repoe automaticamente insumos; isso depende de decisao de negocio.
-- Nao confundir `Repository<T>` com um repositorio JPA pronto. O fake nao oferece durabilidade nem isolamento transacional.
+- `Repository<T>` e `RepositorioEmMemoria` continuam uteis para testes de dominio, mas nao substituem os repositorios Spring Data usados nos fluxos persistidos.
