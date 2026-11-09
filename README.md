@@ -28,7 +28,7 @@ Na pasta **Documentos**, estão disponíveis os arquivos referentes às **Entreg
 
 Logo abaixo, encontra-se o link para a pasta do **Google Drive**, que contém todos os diagramas e a comprovação, em áudio, da validação realizada com a cliente.
 
-
+Link do protótipo no figma: `https://www.figma.com/proto/G11JyDS2Je7UZN1CiwnstD/Untitled?node-id=0-1&t=FXsMce8kGfhSbJDq-1`
 Link: `https://drive.google.com/drive/folders/1M-Qgs_vqO21xj2suu5uTPPz3KIr8-BeN?usp=sharing`
 
 ## Equipe
