@@ -24,6 +24,8 @@ Sistema web para gestão de um pequeno ateliê que produz e vende peças de roup
 
 ## Documentação
 
+- Configuração do banco de dados no Supabase: [`Backend/README-TRILHA-E.md`](Backend/README-TRILHA-E.md)
+
 Na pasta **Documentos**, estão disponíveis os arquivos referentes às **Entregas 1 e 2**, os **diagramas de atividade e de classes**, além do **feedback da validação realizada com a cliente Cirinha**.
 
 Logo abaixo, encontra-se o link para a pasta do **Google Drive**, que contém todos os diagramas e a comprovação, em áudio, da validação realizada com a cliente.
