@@ -39,7 +39,11 @@ class UsuarioControllerIT extends IntegrationTestBase {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("maria@exemplo.com"));
+                .andExpect(jsonPath("$.token").isString())
+                .andExpect(jsonPath("$.tipo").value("Bearer"))
+                .andExpect(jsonPath("$.expiraEmSegundos").isNumber())
+                .andExpect(jsonPath("$.usuario.email").value("maria@exemplo.com"))
+                .andExpect(jsonPath("$.usuario.senhaHash").doesNotExist());
     }
 
     @Test

@@ -26,6 +26,7 @@ Sistema web para gestão de um pequeno ateliê que produz e vende peças de roup
 
 - Configuração do banco de dados no Supabase: [`Backend/README-TRILHA-E.md`](Backend/README-TRILHA-E.md)
 - Integração do frontend com a API e CORS: [`Frontend/README-TRILHA-F.md`](Frontend/README-TRILHA-F.md)
+- Segurança e autorização (JWT e perfis): [`Backend/README-TRILHA-H.md`](Backend/README-TRILHA-H.md)
 
 Na pasta **Documentos**, estão disponíveis os arquivos referentes às **Entregas 1 e 2**, os **diagramas de atividade e de classes**, além do **feedback da validação realizada com a cliente Cirinha**.
 

@@ -53,6 +53,19 @@ management:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  security:
+    jwt:
+      # Segredo HS256 com no minimo 32 caracteres (recomendado 64 aleatorios).
+      # Gere com: openssl rand -base64 48
+      # NUNCA versione este valor: use variavel de ambiente em producao.
+      secret: ${JWT_SECRET:}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+  admin:
+    # Bootstrap opcional do primeiro ADMIN. Sem estes valores o sistema inicia
+    # sem usuario e nao ha como fazer login ate cria-los.
+    email: ${ADMIN_EMAIL:}
+    senha: ${ADMIN_SENHA:}
+    nome: ${ADMIN_NOME:Administrador}
 
 # No Supabase, informe a URL JDBC do pooler com sslmode=require.
 # Nao armazenar senhas, chaves ou tokens em arquivos versionados.
