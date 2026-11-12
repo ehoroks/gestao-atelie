@@ -1,15 +1,17 @@
 package br.com.atelie.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Libera o frontend para consumir a API quando ele nao esta atras do proxy do Vite.
+ * CORS para o frontend Vue consumir a API quando ele nao esta atras do proxy do Vite.
  *
  * <p>As origens vem da variavel de ambiente {@code CORS_ALLOWED_ORIGINS}, em lista
  * separada por virgula. Em desenvolvimento, o proxy do Vite dispensa CORS, mas as
@@ -17,33 +19,43 @@ import java.util.List;
  *
  * <p>Em producao, informe exatamente o dominio do frontend (por exemplo,
  * {@code https://atelie.exemplo.com}). Evite {@code *} quando a API estiver publica.</p>
+ *
+ * <p>O bean {@link CorsConfigurationSource} e usado tanto pelo Spring MVC quanto
+ * pelo filtro de CORS do Spring Security (Configuracao em {@code SecurityConfig}).</p>
  */
 @Configuration
-public class CorsConfig implements WebMvcConfigurer {
+public class CorsConfig {
 
     private static final List<String> ORIGENS_PADRAO = List.of(
             "http://localhost:5173",
             "http://127.0.0.1:5173"
     );
 
-    private final List<String> origensPermitidas;
+    private static final List<String> METODOS = List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
 
-    public CorsConfig(@Value("${app.cors.allowed-origins:}") String origensConfiguradas) {
-        this.origensPermitidas = interpretarOrigens(origensConfiguradas);
-    }
+    private static final List<String> CABECALHOS = List.of(
+            "Accept", "Authorization", "Content-Type");
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        var registro = registry.addMapping("/api/**")
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Accept", "Authorization", "Content-Type")
-                .maxAge(3600);
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:}") String origensConfiguradas) {
+        List<String> origens = interpretarOrigens(origensConfiguradas);
 
-        if (origensPermitidas.contains("*")) {
-            registro.allowedOriginPatterns("*");
+        CorsConfiguration configuracao = new CorsConfiguration();
+        configuracao.setAllowedMethods(METODOS);
+        configuracao.setAllowedHeaders(CABECALHOS);
+        configuracao.setMaxAge(3600L);
+
+        if (origens.contains("*")) {
+            configuracao.setAllowedOriginPatterns(List.of("*"));
         } else {
-            registro.allowedOrigins(origensPermitidas.toArray(String[]::new));
+            configuracao.setAllowedOrigins(origens);
         }
+
+        UrlBasedCorsConfigurationSource fonte = new UrlBasedCorsConfigurationSource();
+        fonte.registerCorsConfiguration("/api/**", configuracao);
+        return fonte;
     }
 
     private static List<String> interpretarOrigens(String valor) {

@@ -6,3 +6,10 @@ spring:
   flyway:
     enabled: true
     clean-disabled: true
+
+# Segredo fixo apenas para testes de integracao. Nao usar em producao.
+app:
+  security:
+    jwt:
+      secret: segredo-de-integracao-com-mais-de-32-caracteres-hs256
+      expiration-minutes: 60

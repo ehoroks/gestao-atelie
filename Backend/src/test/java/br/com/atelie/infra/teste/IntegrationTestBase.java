@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -20,6 +21,7 @@ import java.util.List;
 @AutoConfigureMockMvc
 @ActiveProfiles("integration")
 @Tag("integration")
+@WithMockUser(roles = "ADMIN")
 public abstract class IntegrationTestBase {
 
     private static final PostgreSQLContainer POSTGRES =

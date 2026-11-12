@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { api, query } from './api'
+import { limparSessao, salvarSessao, tokenAtual, usuarioAtual } from './auth'
 
 const pages = [
   { id: 'produtos', label: 'Produtos', icon: '◈' },
@@ -30,6 +31,12 @@ const insumoNovoCusto = ref('')
 const novaCategoriaVisivel = ref(false)
 const novoProdutoVisivel = ref(false)
 const novoInsumoVisivel = ref(false)
+
+const autenticado = ref(Boolean(tokenAtual()))
+const usuario = usuarioAtual
+const loginForm = reactive({ email: '', senha: '' })
+const loginErro = ref('')
+const loginBusy = ref(false)
 
 const produtoInicial = () => ({
   nome: '', unidadeMedida: 'UN', estoqueMinimo: 0,
@@ -168,14 +175,53 @@ watch(() => [filtro.nome, filtro.categoriaId, filtro.ativo], async () => {
   try { await carregarProdutos() } catch (e) { toast(e.message, true) }
 })
 watch(selecionado, carregarMovimentos)
+async function entrar() {
+  loginBusy.value = true
+  loginErro.value = ''
+  try {
+    const resposta = await api('/api/auth/login', { method: 'POST', body: loginForm })
+    salvarSessao(resposta)
+    autenticado.value = true
+    loginForm.senha = ''
+    page.value = 'produtos'
+    try { await carregarTudo() }
+    catch (e) { toast(`Login ok, mas não foi possível carregar os dados: ${e.message}`, true) }
+  } catch (e) {
+    loginErro.value = e.message
+  } finally {
+    loginBusy.value = false
+    loading.value = false
+  }
+}
+function sair() {
+  limparSessao()
+  autenticado.value = false
+  categorias.value = []
+  produtos.value = []
+  todosProdutos.value = []
+  insumos.value = []
+  estoque.value = []
+  movimentos.value = []
+  selecionado.value = ''
+  feedback.value = ''
+}
+function sessaoExpirada() {
+  if (!autenticado.value) return
+  sair()
+  loginErro.value = 'Sua sessão expirou. Entre novamente.'
+}
 onMounted(async () => {
+  window.addEventListener('atelie:sessao-expirada', sessaoExpirada)
+  if (!tokenAtual()) { loading.value = false; return }
   try { await carregarTudo() }
   catch (e) { toast(`Não foi possível conectar ao backend: ${e.message}`, true) }
   finally { loading.value = false }
 })
+onUnmounted(() => window.removeEventListener('atelie:sessao-expirada', sessaoExpirada))
 </script>
 
 <template>
+  <template v-if="autenticado">
   <div class="layout">
     <aside class="sidebar">
       <div class="brand"><div class="brand-symbol">C<span>✳</span></div><div><strong>Cirinha</strong><small>ATELIÊ · GESTÃO</small></div></div>
@@ -192,7 +238,10 @@ onMounted(async () => {
     <main class="main">
       <header class="topbar">
         <div><span class="eyebrow">CIRINHA ATELIÊ / GESTÃO</span><h1>{{ pages.find(p => p.id === page)?.label }}</h1></div>
-        <span class="topbar-chip"><span class="status-dot"></span> Controle do ateliê</span>
+        <div class="topbar-user">
+          <span class="topbar-chip"><span class="status-dot"></span> {{ usuario?.nome || 'Controle do ateliê' }}<template v-if="usuario?.perfil"> · {{ usuario.perfil }}</template></span>
+          <button class="secondary small" @click="sair">Sair</button>
+        </div>
       </header>
 
       <div v-if="feedback" class="feedback" :class="{ error: feedbackError }" role="status">
@@ -249,4 +298,21 @@ onMounted(async () => {
   <div v-if="novoInsumoVisivel" class="overlay" @click.self="novoInsumoVisivel = false"><section class="modal modal-small" role="dialog" aria-modal="true" aria-label="Insumo"><div class="modal-header"><h2>Novo insumo</h2><button class="close" @click="novoInsumoVisivel = false">×</button></div><form @submit.prevent="salvarInsumo" class="modal-form"><label class="field span-2"><span>Nome *</span><input v-model="insumoForm.nome" maxlength="120" required placeholder="Ex.: Tecido algodão" /></label><label class="field"><span>Unidade *</span><select v-model="insumoForm.unidadeMedida"><option value="UN">Unidade</option><option value="M">Metro</option><option value="G">Grama</option></select></label><label class="field"><span>Estoque mínimo *</span><input type="number" v-model="insumoForm.estoqueMinimo" min="0" step="0.001" required /></label><label class="field span-2"><span>Custo unitário (R$) *</span><input v-model="insumoForm.custoUnitario" type="number" step="0.0001" min="0" required /></label><div class="modal-actions span-2"><button type="button" class="secondary" @click="novoInsumoVisivel = false">Cancelar</button><button class="primary" :disabled="busy">Cadastrar</button></div></form></section></div>
 
   <div v-if="insumoEditandoCusto" class="overlay" @click.self="insumoEditandoCusto = null"><section class="modal modal-small" role="dialog" aria-modal="true" aria-label="Editar custo"><div class="modal-header"><h2>Atualizar custo unitário</h2><button class="close" @click="insumoEditandoCusto = null">×</button></div><form @submit.prevent="salvarCusto" class="modal-form"><label class="field span-2"><span>Novo custo (R$) *</span><input v-model="insumoNovoCusto" type="number" step="0.0001" min="0" required /></label><div class="modal-actions span-2"><button type="button" class="secondary" @click="insumoEditandoCusto = null">Cancelar</button><button class="primary" :disabled="busy">Salvar</button></div></form></section></div>
+  </template>
+
+  <main v-else class="login-page">
+    <section class="login-card" aria-label="Login">
+      <div class="brand login-brand"><div class="brand-symbol">C<span>✳</span></div><div><strong>Cirinha</strong><small>ATELIÊ · GESTÃO</small></div></div>
+      <span class="eyebrow">ACESSO RESTRITO</span>
+      <h1>Bem-vinda de volta</h1>
+      <p class="login-subtitle">Entre com o e-mail e a senha cadastrados no ateliê.</p>
+      <form class="login-form" @submit.prevent="entrar">
+        <label class="field"><span>E-mail</span><input v-model.trim="loginForm.email" type="email" autocomplete="username" required autofocus /></label>
+        <label class="field"><span>Senha</span><input v-model="loginForm.senha" type="password" autocomplete="current-password" required /></label>
+        <p v-if="loginErro" class="login-error" role="alert">{{ loginErro }}</p>
+        <button class="primary full" :disabled="loginBusy">{{ loginBusy ? 'Entrando...' : 'Entrar' }}</button>
+      </form>
+      <small class="login-hint">O acesso é gerenciado pelo administrador do ateliê.</small>
+    </section>
+  </main>
 </template>
