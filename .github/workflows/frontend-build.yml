@@ -1,0 +1,43 @@
+name: Build Frontend
+
+on:
+  push:
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-build.yml'
+  pull_request:
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Instalar e buildar o Vue
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v7
+
+      - name: Configurar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Buildar
+        run: npm run build
