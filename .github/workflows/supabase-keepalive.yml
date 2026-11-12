@@ -1,0 +1,53 @@
+name: Supabase keep-alive
+
+# O free tier do Supabase pausa o projeto apos 7 dias sem atividade no banco.
+# Esta consulta periodica mantem o banco ativo sem depender do backend estar no ar.
+#
+# Secret necessario: SUPABASE_DB_URL (URL libpq, nao JDBC).
+# Ex.: postgresql://postgres.<ref>:<senha>@<host>:5432/postgres?sslmode=require
+
+on:
+  schedule:
+    # A cada 3 dias, as 12:00 UTC (09:00 de Brasilia).
+    - cron: '0 12 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Pingar o banco
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PG_CLIENT_IMAGE: postgres:17-alpine
+    steps:
+      - name: Verificar configuracao
+        id: config
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::Secret SUPABASE_DB_URL nao configurado; keep-alive ignorado."
+            echo "configurado=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configurado=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Consultar o banco
+        if: steps.config.outputs.configurado == 'true'
+        run: |
+          docker run --rm \
+            -e PGURL="$SUPABASE_DB_URL" \
+            "$PG_CLIENT_IMAGE" \
+            sh -c 'psql "$PGURL" -v ON_ERROR_STOP=1 -c "select now() as atividade;"'
+
+      - name: Registrar resultado
+        if: steps.config.outputs.configurado == 'true'
+        run: |
+          echo "Keep-alive executado com sucesso em $(date -u +'%Y-%m-%dT%H:%M:%SZ')." \
+            >> "$GITHUB_STEP_SUMMARY"

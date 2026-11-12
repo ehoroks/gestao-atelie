@@ -11,7 +11,8 @@ sem alterar os contratos de domínio das trilhas A–D.
 - Healthcheck em `/actuator/health`, incluindo o status do banco, além de `liveness` e `readiness`.
 - Testes de integração que conferem o schema completo e o healthcheck com PostgreSQL real.
 - Exemplo de configuração em `Backend/.env.example`.
-- Documentação de conexão, migrations, segurança e troubleshooting.
+- Workflows gratuitos de **keep-alive** e **backup diário para o Cloudflare R2**.
+- Documentação de conexão, migrations, operação em custo zero, segurança e troubleshooting.
 
 **Não faz parte desta trilha:** CORS, deploy, autenticação de rotas, telas do frontend e
 Supabase Storage. Esses itens pertencem às trilhas F, G, H, I e J.
@@ -162,7 +163,126 @@ O Transaction Pooler não mantém uma sessão fixa. Para esse cenário:
 | `Connection is not available, request timed out` | Pool pequeno ou banco pausado | Reduza concorrência, ajuste `DB_POOL_MAX_SIZE` e verifique o Supabase |
 | `too many connections` | Muitas instâncias ou pool grande | Reduza `DB_POOL_MAX_SIZE`; cada instância abre seu próprio pool |
 
-## 8. Checklist de aceite
+## 8. Operação em custo zero
+
+O projeto foi pensado para rodar **sem nenhum gasto** no plano free do Supabase.
+Como a maior parte dos dados é textual (nomes, descrições, preços, vendas), os
+**500 MB** do banco free são suficientes por muito tempo. O que exige atenção não
+é o espaço, e sim a **pausa por inatividade** e a **falta de backup automático**.
+
+### 8.1 Limites do plano free (2026)
+
+| Recurso | Limite free | Observação |
+|---|---|---|
+| Banco PostgreSQL | **500 MB** | Suficiente para milhares de produtos, vendas e clientes textuais |
+| File Storage | 1 GB | Separado do banco; usado apenas se a Trilha J for adotada |
+| Egress | 5 GB/mês | Inclui respostas da API e downloads de backup |
+| Projetos ativos | 2 | Use um para produção e outro para testes, se necessário |
+| Pausa por inatividade | **7 dias** | O projeto pausa e precisa ser retomado no painel |
+| Backup automático | **Não existe** | Precisa ser feito por fora (ver 8.3) |
+
+> **Regra de ouro:** nunca salve imagem em `base64` dentro de um campo `text`.
+> A coluna `foto` deve ser uma **URL** (ou, no futuro, um objeto do Storage).
+> Uma única foto em base64 pode consumir o espaço de centenas de produtos.
+
+### 8.2 Keep-alive (evitar a pausa)
+
+O workflow [`.github/workflows/supabase-keepalive.yml`](../.github/workflows/supabase-keepalive.yml)
+executa um `select now()` a cada **3 dias**, usando `psql` na imagem
+`postgres:17-alpine`. Isso conta como atividade no banco e evita a pausa.
+
+- **Não é possível** usar o keep-alive para *acordar* um projeto já pausado; ele
+  apenas evita que o projeto pause.
+- O workflow pode ser disparado manualmente em **Actions → Supabase keep-alive →
+  Run workflow**.
+- Se o secret não estiver configurado, o workflow termina com *warning* e sem
+  falhar, para não poluir o histórico.
+
+**Secret necessário:**
+
+| Secret | Formato |
+|---|---|
+| `SUPABASE_DB_URL` | URL **libpq** (não JDBC), ex.: `postgresql://postgres.<ref>:<senha>@<host>:5432/postgres?sslmode=require` |
+
+### 8.3 Backup automático para o Cloudflare R2
+
+O plano free do Supabase **não tem backup automático**. O workflow
+[`.github/workflows/supabase-backup.yml`](../.github/workflows/supabase-backup.yml)
+roda diariamente, gera um `pg_dump --format=custom` e envia o arquivo para um
+**bucket privado do Cloudflare R2** (10 GB gratuitos).
+
+**Secrets necessários:**
+
+| Secret | Descrição |
+|---|---|
+| `SUPABASE_DB_URL` | Mesma URL libpq do keep-alive |
+| `R2_ACCOUNT_ID` | Account ID do Cloudflare |
+| `R2_ACCESS_KEY_ID` | Access Key do token de API do R2 |
+| `R2_SECRET_ACCESS_KEY` | Secret Key do token de API do R2 |
+| `R2_BUCKET` | Nome do bucket **privado** |
+
+O workflow:
+
+1. valida se todos os secrets estão presentes (se faltar algum, apenas avisa);
+2. gera o dump com `pg_dump` no container `postgres:17-alpine`;
+3. envia para `s3://<R2_BUCKET>/atelie/atelie-<timestamp>.dump`;
+4. aplica retenção de **30 backups**, removendo os mais antigos.
+
+**Cuidados:**
+
+- O bucket R2 deve ser **privado**. Não gere URL pública para os dumps.
+- As credenciais ficam **somente** nos GitHub Secrets, nunca no repositório.
+- O `pg_dump` precisa ser de versão **igual ou superior** à do servidor. O
+  workflow usa `postgres:17-alpine`; se o Supabase mudar para uma versão maior,
+  atualize a imagem.
+- O tráfego do dump conta no **egress** mensal (5 GB). Para um banco pequeno é
+  tranquilo; se o banco crescer muito, reduza a frequência para semanal.
+- O backup cobre **apenas o banco**. Fotos no Supabase Storage exigiriam um
+  backup separado (Trilha J).
+
+### 8.4 Como restaurar um backup
+
+Com um dump `--format=custom`, a restauração usa `pg_restore`:
+
+```bash
+# 1. Baixe o dump do R2 (use credenciais com permissão de leitura)
+aws s3 cp "s3://<R2_BUCKET>/atelie/atelie-<timestamp>.dump" ./atelie.dump \
+  --endpoint-url "https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com"
+
+# 2. Restaure em um banco NOVO e vazio (nunca por cima da produção)
+pg_restore \
+  --dbname "postgresql://postgres.<ref>:<senha>@<host>:5432/postgres?sslmode=require" \
+  --no-owner --no-privileges --clean --if-exists \
+  ./atelie.dump
+
+# 3. Valide o schema e os dados
+psql "postgresql://postgres.<ref>:<senha>@<host>:5432/postgres?sslmode=require" \
+  -c "select version, description, success from flyway_schema_history order by installed_rank;"
+```
+
+> Teste a restauração **pelo menos uma vez** em um projeto Supabase de teste.
+> Um backup que nunca foi restaurado não é um backup confiável.
+
+### 8.5 Limitação do GitHub Actions em repositórios públicos
+
+O GitHub **desativa workflows agendados após 60 dias sem atividade** no
+repositório (commits, PRs etc.). Como este repositório é público, isso pode
+parar o keep-alive e o backup silenciosamente.
+
+Alternativas gratuitas, se o repositório continuar público:
+
+- manter alguma atividade periódica no repositório (commit de documentação,
+  por exemplo);
+- usar um monitor externo gratuito (cron-job.org, UptimeRobot) apontando para um
+  endpoint que consulte o banco;
+- migrar o repositório para **privado**, onde a limitação não se aplica ao
+  plano free do GitHub Actions (sujeito aos minutos gratuitos mensais).
+
+> Verifique periodicamente em **Actions** se os dois workflows continuam
+> executando. Um backup que parou há meses é pior do que não ter backup, porque
+> cria uma falsa sensação de segurança.
+
+## 9. Checklist de aceite
 
 - [ ] Projeto Supabase criado e senha guardada fora do Git.
 - [ ] `DB_JDBC_URL`, `DB_USERNAME` e `DB_PASSWORD` configurados no ambiente.
@@ -173,3 +293,6 @@ O Transaction Pooler não mantém uma sessão fixa. Para esse cenário:
 - [ ] `flyway_schema_history` contém `V100` a `V401` com sucesso.
 - [ ] `GET /api/produtos` responde pela API conectada ao Supabase.
 - [ ] Nenhuma credencial versionada.
+- [ ] Workflow de **keep-alive** configurado e executando a cada 3 dias.
+- [ ] Workflow de **backup** configurado e enviando dumps para o R2.
+- [ ] Restauração de um backup testada em banco novo.
