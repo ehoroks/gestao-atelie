@@ -1,0 +1,125 @@
+name: Backup do Supabase
+
+# Gera um dump completo do PostgreSQL e envia para um bucket privado do Cloudflare R2.
+# O plano free do Supabase nao inclui backup automatico.
+#
+# Secrets necessarios:
+#   SUPABASE_DB_URL     - URL libpq do banco (nao JDBC), com sslmode=require
+#   R2_ACCOUNT_ID       - Account ID do Cloudflare
+#   R2_ACCESS_KEY_ID    - Access Key do token de API do R2
+#   R2_SECRET_ACCESS_KEY- Secret Key do token de API do R2
+#   R2_BUCKET           - nome do bucket privado
+
+on:
+  schedule:
+    # Diariamente as 03:00 UTC (00:00 de Brasilia).
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Gerar e enviar backup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      PG_DUMP_IMAGE: postgres:17-alpine
+      RETENCAO_DIAS: 30
+    steps:
+      - name: Verificar configuracao
+        id: config
+        run: |
+          faltando=""
+          for nome in SUPABASE_DB_URL R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET; do
+            if [ -z "${!nome}" ]; then
+              faltando="$faltando $nome"
+            fi
+          done
+
+          if [ -n "$faltando" ]; then
+            echo "::warning::Secrets ausentes:$faltando. Backup ignorado."
+            echo "configurado=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Backup ignorado"
+              echo "Secrets ausentes: \`$faltando\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configurado=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Gerar dump
+        if: steps.config.outputs.configurado == 'true'
+        run: |
+          set -euo pipefail
+          stamp="$(date -u +'%Y%m%dT%H%M%SZ')"
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          mkdir -p backups
+
+          docker run --rm \
+            -e PGURL="$SUPABASE_DB_URL" \
+            "$PG_DUMP_IMAGE" \
+            sh -c 'pg_dump "$PGURL" --format=custom --no-owner --no-privileges' \
+            > "backups/atelie-$stamp.dump"
+
+          test -s "backups/atelie-$stamp.dump"
+          echo "Backup gerado: $(du -h "backups/atelie-$stamp.dump" | cut -f1)"
+
+      - name: Enviar para o Cloudflare R2
+        if: steps.config.outputs.configurado == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+        run: |
+          set -euo pipefail
+          endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          aws s3 cp "backups/atelie-${STAMP}.dump" \
+            "s3://${R2_BUCKET}/atelie/atelie-${STAMP}.dump" \
+            --endpoint-url "$endpoint" \
+            --only-show-errors
+
+      - name: Aplicar retencao
+        if: steps.config.outputs.configurado == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+        run: |
+          set -euo pipefail
+          endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          aws s3 ls "s3://${R2_BUCKET}/atelie/" --endpoint-url "$endpoint" \
+            | awk '$4 ~ /^atelie-.*\.dump$/ {print $4}' \
+            | sort \
+            | head -n "-${RETENCAO_DIAS}" \
+            | while read -r antigo; do
+                if [ -n "$antigo" ]; then
+                  aws s3 rm "s3://${R2_BUCKET}/atelie/$antigo" \
+                    --endpoint-url "$endpoint" \
+                    --only-show-errors
+                fi
+              done
+
+      - name: Registrar resultado
+        if: steps.config.outputs.configurado == 'true'
+        run: |
+          {
+            echo "### Backup concluido"
+            echo "- Arquivo: \`atelie-${STAMP}.dump\`"
+            echo "- Destino: \`s3://${R2_BUCKET}/atelie/\`"
+            echo "- Retencao: ${RETENCAO_DIAS} backups"
+          } >> "$GITHUB_STEP_SUMMARY"
