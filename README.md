@@ -24,9 +24,19 @@ Sistema web para gestão de um pequeno ateliê que produz e vende peças de roup
 
 ## Documentação
 
-- Configuração do banco de dados no Supabase: [`Backend/README-TRILHA-E.md`](Backend/README-TRILHA-E.md)
-- Integração do frontend com a API e CORS: [`Frontend/README-TRILHA-F.md`](Frontend/README-TRILHA-F.md)
-- Segurança e autorização (JWT e perfis): [`Backend/README-TRILHA-H.md`](Backend/README-TRILHA-H.md)
+### Trilhas
+
+| Trilha | Documento | Escopo |
+|---|---|---|
+| A | [`Backend/README-TRILHA-A.md`](Backend/README-TRILHA-A.md) | Catálogo, insumos e estoque (RF02–RF11, RF28) |
+| B | [`Backend/README-TRILHA-B.md`](Backend/README-TRILHA-B.md) | Usuários, clientes, vendas, descontos, comprovantes e relatórios (B1–B12) |
+| C | [`Backend/README-TRILHA-C.md`](Backend/README-TRILHA-C.md) | Encomendas, composição de preço e regras de negócio |
+| D | [`Backend/README-TRILHA-D.md`](Backend/README-TRILHA-D.md) | Integração das trilhas A/B/C no backend atual |
+| E | [`Backend/README-TRILHA-E.md`](Backend/README-TRILHA-E.md) | PostgreSQL no Supabase, Flyway, backup e keep-alive |
+| F | [`Frontend/README-TRILHA-F.md`](Frontend/README-TRILHA-F.md) | Integração do Vue com a API, CORS e build do frontend |
+| H | [`Backend/README-TRILHA-H.md`](Backend/README-TRILHA-H.md) | JWT, perfis ADMIN/ATENDENTE e administrador inicial |
+
+Não há documentação de uma Trilha G neste repositório.
 
 Na pasta **Documentos**, estão disponíveis os arquivos referentes às **Entregas 1 e 2**, os **diagramas de atividade e de classes**, além do **feedback da validação realizada com a cliente Cirinha**.
 
