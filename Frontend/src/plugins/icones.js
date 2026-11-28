@@ -1,0 +1,81 @@
+/**
+ * Apenas os ícones que as telas realmente usam.
+ *
+ * A folha completa do @mdi/font declara ~7.000 classes e pesa 412 kB, para as
+ * 33 que este app usa. Aqui cada ícone entra como caminho SVG, e o
+ * bundler descarta o resto. Os nomes seguem iguais nos templates
+ * (prepend-icon="mdi-home-outline"), então nada muda nas telas.
+ *
+ * Gerado a partir de src/. Ao usar um ícone novo, acrescente-o aqui.
+ */
+import {
+  mdiAccountPlusOutline,
+  mdiArrowLeft,
+  mdiCart,
+  mdiCartOutline,
+  mdiChartBar,
+  mdiChevronRight,
+  mdiCircleSmall,
+  mdiClipboardText,
+  mdiClipboardTextOutline,
+  mdiClose,
+  mdiContentCut,
+  mdiDeleteOutline,
+  mdiEmailOutline,
+  mdiEyeOffOutline,
+  mdiEyeOutline,
+  mdiHanger,
+  mdiHistory,
+  mdiHome,
+  mdiHomeOutline,
+  mdiImageOutline,
+  mdiLockOutline,
+  mdiLogout,
+  mdiMagnify,
+  mdiPackageVariant,
+  mdiPackageVariantClosed,
+  mdiPencilOutline,
+  mdiPlus,
+  mdiReceiptTextOutline,
+  mdiTagOutline,
+  mdiTrayArrowDown,
+  mdiTrayArrowUp,
+  mdiTrophyOutline,
+  mdiTuneVariant,
+} from '@mdi/js'
+
+export const CAMINHOS = {
+  'mdi-account-plus-outline': mdiAccountPlusOutline,
+  'mdi-arrow-left': mdiArrowLeft,
+  'mdi-cart': mdiCart,
+  'mdi-cart-outline': mdiCartOutline,
+  'mdi-chart-bar': mdiChartBar,
+  'mdi-chevron-right': mdiChevronRight,
+  'mdi-circle-small': mdiCircleSmall,
+  'mdi-clipboard-text': mdiClipboardText,
+  'mdi-clipboard-text-outline': mdiClipboardTextOutline,
+  'mdi-close': mdiClose,
+  'mdi-content-cut': mdiContentCut,
+  'mdi-delete-outline': mdiDeleteOutline,
+  'mdi-email-outline': mdiEmailOutline,
+  'mdi-eye-off-outline': mdiEyeOffOutline,
+  'mdi-eye-outline': mdiEyeOutline,
+  'mdi-hanger': mdiHanger,
+  'mdi-history': mdiHistory,
+  'mdi-home': mdiHome,
+  'mdi-home-outline': mdiHomeOutline,
+  'mdi-image-outline': mdiImageOutline,
+  'mdi-lock-outline': mdiLockOutline,
+  'mdi-logout': mdiLogout,
+  'mdi-magnify': mdiMagnify,
+  'mdi-package-variant': mdiPackageVariant,
+  'mdi-package-variant-closed': mdiPackageVariantClosed,
+  'mdi-pencil-outline': mdiPencilOutline,
+  'mdi-plus': mdiPlus,
+  'mdi-receipt-text-outline': mdiReceiptTextOutline,
+  'mdi-tag-outline': mdiTagOutline,
+  'mdi-tray-arrow-down': mdiTrayArrowDown,
+  'mdi-tray-arrow-up': mdiTrayArrowUp,
+  'mdi-trophy-outline': mdiTrophyOutline,
+  'mdi-tune-variant': mdiTuneVariant,
+}
